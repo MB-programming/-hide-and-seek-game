@@ -10,11 +10,15 @@
  * firebase-init.js, so it just needs to define window.ZIZO_FIREBASE_CONFIG.
  */
 window.ZIZO_FIREBASE_CONFIG = {
-  apiKey: 'PASTE_YOUR_API_KEY',
-  authDomain: 'PASTE_YOUR_PROJECT_ID.firebaseapp.com',
-  databaseURL: 'https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com',
-  projectId: 'PASTE_YOUR_PROJECT_ID',
-  storageBucket: 'PASTE_YOUR_PROJECT_ID.appspot.com',
-  messagingSenderId: 'PASTE_YOUR_SENDER_ID',
-  appId: 'PASTE_YOUR_APP_ID'
+  apiKey: 'AIzaSyBpMKXryvMhQ-0t4Q99ss4lfluaxrOhkAM',
+  authDomain: 'zizohide.firebaseapp.com',
+  // TODO: create the Realtime Database (Databases and Storage > Realtime
+  // Database > Create Database) then paste its URL here — it looks like
+  // https://zizohide-default-rtdb.<region>.firebasedatabase.app
+  // (find it at the top of the Realtime Database console page once created).
+  databaseURL: 'PASTE_YOUR_DATABASE_URL',
+  projectId: 'zizohide',
+  storageBucket: 'zizohide.firebasestorage.app',
+  messagingSenderId: '968449422563',
+  appId: '1:968449422563:web:7b8f7bdde668fdf4bac1d6'
 };
