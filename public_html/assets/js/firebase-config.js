@@ -12,11 +12,7 @@
 window.ZIZO_FIREBASE_CONFIG = {
   apiKey: 'AIzaSyBpMKXryvMhQ-0t4Q99ss4lfluaxrOhkAM',
   authDomain: 'zizohide.firebaseapp.com',
-  // TODO: create the Realtime Database (Databases and Storage > Realtime
-  // Database > Create Database) then paste its URL here — it looks like
-  // https://zizohide-default-rtdb.<region>.firebasedatabase.app
-  // (find it at the top of the Realtime Database console page once created).
-  databaseURL: 'PASTE_YOUR_DATABASE_URL',
+  databaseURL: 'https://zizohide-default-rtdb.firebaseio.com',
   projectId: 'zizohide',
   storageBucket: 'zizohide.firebasestorage.app',
   messagingSenderId: '968449422563',
