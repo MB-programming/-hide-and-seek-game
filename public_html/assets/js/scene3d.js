@@ -5,8 +5,8 @@
  * lighting/shading — replacing the old flat 2D procedural background.
  *
  * Coordinate system: world X/Z map 1:1 onto the stage's existing x/y
- * numbers (data/stages/*.json, Firebase player.x/y) with NO extra offset —
- * a player at Firebase {x:80, y:470} sits at Three.js position (80, footY,
+ * numbers (data/stages/*.json, room_players.x/y in MySQL) with NO extra
+ * offset — a player at {x:80, y:470} sits at Three.js position (80, footY,
  * 470). This is deliberate: it means room.js, input.js and every existing
  * x/y number in stage configs needed ZERO changes for the 3D rewrite, only
  * new fields (wallHeight/floorColor/wallColor/zone.height/zone.color) were

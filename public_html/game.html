@@ -109,16 +109,14 @@
 
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <!-- Three.js: plain global <script> build (no bundler/ES modules needed), r128
      for broad old-browser compatibility. Powers the real 3D room/characters
      — see scene3d.js and player.js. -->
 <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 
-<script src="assets/js/firebase-config.js"></script>
-<script src="assets/js/firebase-init.js"></script>
+<!-- Multiplayer runs entirely on plain PHP + MySQL polling (api/game.php) —
+     no external realtime service, no build step. -->
+<script src="assets/js/net.js"></script>
 <script src="assets/js/utils.js"></script>
 <script src="assets/js/lang.js"></script>
 <script src="assets/js/config.js"></script>

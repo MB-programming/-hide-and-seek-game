@@ -29,7 +29,7 @@
 
   // Basic throttle: returns a wrapped fn that runs at most once per `ms`,
   // always firing on the trailing edge so the last call isn't dropped.
-  // Used to cap Firebase writes for continuous things like player movement.
+  // Used to cap network writes for continuous things like player movement.
   function throttle(fn, ms) {
     var last = 0, timer = null, pendingArgs = null;
     function run() {

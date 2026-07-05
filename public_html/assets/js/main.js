@@ -98,11 +98,11 @@
     $('#create-room-modal').classList.add('hidden');
   }
 
-  // IMPORTANT: room creation itself happens on game.html, not here. Firebase
-  // room.create() starts the host's phase-clock interval timer (see
-  // room.js), which would be destroyed instantly by the page navigation to
-  // game.html if we called it on this page. So all this page does is stash
-  // the chosen options and hand off via a query param + sessionStorage.
+  // IMPORTANT: room creation itself happens on game.html, not here.
+  // room.create() kicks off room.js's polling loop (setTimeout chain) for
+  // this room, which would be destroyed instantly by the page navigation
+  // to game.html if we called it on this page. So all this page does is
+  // stash the chosen options and hand off via a query param + sessionStorage.
   async function onCreateConfirm() {
     var cfg = await ZizoConfig.loadGameConfig(); // cached — cheap, just reads admin-configured defaults
     var settings = cfg.settings || {};
@@ -112,9 +112,9 @@
       name: nickname + (pendingMode === 'public' ? "'s room" : "'s private room"),
       nickname: nickname,
       mapSlug: $('#create-map-select').value,
-      // Clamped to 2-10: firebase-rules.json hard-caps meta.maxPlayers at 10
-      // (matches the "2-10 players per room" spec) — a room list value
-      // outside that range would otherwise have its write rejected outright.
+      // Clamped to 2-10 (matches the "2-10 players per room" spec) — also
+      // enforced server-side in api/game.php's clampInt(), this just avoids
+      // sending an obviously-invalid value in the first place.
       maxPlayers: ZizoUtils.clamp(parseInt(settings.max_players_per_room, 10) || 10, 2, 10),
       seekerCount: parseInt($('#create-seekers').value, 10) || 1,
       paintDuration: parseInt($('#create-paint-duration').value, 10) || 60,

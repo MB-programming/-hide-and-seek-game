@@ -88,6 +88,60 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ON DUPLICATE KEY UPDATE setting_key = setting_key;
 
 -- ---------------------------------------------------------------------------
+-- rooms / room_players: live multiplayer state, driven entirely by
+-- api/game.php. There is no persistent server process (plain PHP shared
+-- hosting) — every client polls get_state repeatedly, and that same
+-- endpoint also runs the server-authoritative phase clock (see
+-- api/game.php's tick_room()) so any client's poll can safely advance the
+-- room; MySQL's atomic conditional UPDATEs prevent two simultaneous polls
+-- from double-processing the same transition.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS rooms (
+  code VARCHAR(10) NOT NULL PRIMARY KEY,
+  is_public TINYINT(1) NOT NULL DEFAULT 0,
+  name VARCHAR(60) NOT NULL,
+  map_slug VARCHAR(50) NOT NULL,
+  max_players TINYINT UNSIGNED NOT NULL DEFAULT 10,
+  seeker_count TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  paint_duration INT UNSIGNED NOT NULL DEFAULT 60,
+  round_duration INT UNSIGNED NOT NULL DEFAULT 180,
+  repaint_limit TINYINT UNSIGNED NOT NULL DEFAULT 2,
+  wrong_catch_penalty_sec TINYINT UNSIGNED NOT NULL DEFAULT 3,
+  phase VARCHAR(20) NOT NULL DEFAULT 'lobby' COMMENT 'lobby|starting|painting|seeking|results',
+  phase_started_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  winner_role VARCHAR(20) NULL COMMENT 'hiders|seekers',
+  created_by VARCHAR(40) NOT NULL COMMENT 'player_id of the room creator (client-side "isCreator" gate for host-only UI)',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  INDEX idx_public_lobby (is_public, phase)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS room_players (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  room_code VARCHAR(10) NOT NULL,
+  player_id VARCHAR(40) NOT NULL COMMENT 'public id, safe to send to other clients (catch targets etc)',
+  token VARCHAR(64) NOT NULL COMMENT 'secret, proves a request came from this player — never sent to other clients',
+  nickname VARCHAR(20) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'lobby' COMMENT 'lobby|hider|seeker',
+  ready TINYINT(1) NOT NULL DEFAULT 0,
+  alive TINYINT(1) NOT NULL DEFAULT 1,
+  pose VARCHAR(20) NOT NULL DEFAULT 'stand',
+  x FLOAT NOT NULL DEFAULT 0,
+  y FLOAT NOT NULL DEFAULT 0,
+  repaints_used TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  is_repainting TINYINT(1) NOT NULL DEFAULT 0,
+  repaint_window_ends_at DATETIME(3) NULL,
+  paint_data LONGTEXT NULL,
+  paint_rev BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  caught_by VARCHAR(40) NULL,
+  caught_at DATETIME(3) NULL,
+  last_seen DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  joined_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uniq_room_player (room_code, player_id),
+  FOREIGN KEY (room_code) REFERENCES rooms(code) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
 -- session_logs: one row per finished round, written by api/log-session.php
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS session_logs (

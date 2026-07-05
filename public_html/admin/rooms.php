@@ -9,7 +9,7 @@ require_login();
 
 $FIELDS = [
     'max_public_rooms' => 'Max concurrent public rooms (browser list cap)',
-    'max_players_per_room' => 'Max players per room (2-10; Firebase rules hard-cap at 10)',
+    'max_players_per_room' => 'Max players per room (2-10; also validated server-side in api/game.php)',
     'default_seeker_count' => 'Default Seeker count',
     'default_paint_duration_sec' => 'Default painting duration (sec)',
     'default_round_duration_sec' => 'Default round duration (sec)',

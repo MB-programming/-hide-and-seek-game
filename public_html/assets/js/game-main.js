@@ -8,8 +8,8 @@
  *
  * Rendering is real WebGL 3D via Three.js (CDN script tag, see game.html) —
  * a genuine 3D room you move around in and look across, not a flat 2D
- * scene. A player's Firebase x/y still map straight onto Three.js world X/Z
- * (see scene3d.js header) so none of the multiplayer sync code in room.js
+ * scene. A player's x/y still map straight onto Three.js world X/Z (see
+ * scene3d.js header) so none of the multiplayer sync code in room.js
  * needed to change for this — only the rendering/input/admin-editor layers
  * did.
  */
@@ -61,9 +61,19 @@
         if (!pending) throw new Error('No room settings found.');
         sessionStorage.removeItem('zizo_pending_create');
         await room.create(pending);
+        // Swap the URL to ?code=XXXX (no page reload) so an accidental
+        // refresh right after creating resumes this same session via
+        // room.resume() below, instead of hitting "No room settings found."
+        history.replaceState(null, '', 'game.html?code=' + encodeURIComponent(room.code));
       } else if (code) {
-        var nickname = sessionStorage.getItem('zizo_join_nickname') || 'Player';
-        await room.join(code, nickname);
+        // A refreshed tab still has its player/token saved in
+        // sessionStorage — resume as that same player rather than joining
+        // fresh as a duplicate (there's no realtime presence system here
+        // to detect "this is really the same browser reconnecting").
+        if (!room.resume(code)) {
+          var nickname = sessionStorage.getItem('zizo_join_nickname') || 'Player';
+          await room.join(code, nickname);
+        }
       } else {
         throw new Error('No room specified.');
       }
@@ -104,7 +114,10 @@
     if (mapSlug === currentMapSlug) return;
     currentMapSlug = mapSlug;
     stage = await ZizoStages.loadStage(mapSlug);
-    room.stage = stage;
+    // (Hider/Seeker spawn assignment now happens server-side in
+    // api/game.php's action_start_round, which looks up the same stage row
+    // directly from MySQL — room.js no longer needs a client-side copy of
+    // the stage config.)
 
     if (sceneData) disposeSceneData(sceneData);
     sceneData = ZizoScene3D.buildScene(stage);
@@ -139,8 +152,11 @@
     $('#btn-play-again').addEventListener('click', function () {
       room.resetToLobby();
     });
-    $('#btn-reposition').addEventListener('click', function () {
-      if (room.requestRepaint()) {
+    $('#btn-reposition').addEventListener('click', async function () {
+      // Now server-validated (the repaint limit is enforced in
+      // api/game.php, not just trusted from this client), so this has to
+      // wait on a round-trip instead of deciding synchronously.
+      if (await room.requestRepaint()) {
         showToolbar(true);
       }
     });
@@ -253,7 +269,7 @@
         caught_count: caught.length,
         winner_role: meta.winnerRole || null,
         started_at: roundStartedAt || meta.createdAt,
-        ended_at: ZizoFirebase.serverNow()
+        ended_at: ZizoNet.serverNow()
       })
     }).catch(function () { /* best-effort logging only */ });
   }
@@ -452,7 +468,7 @@
 
   function checkRepaintWindowExpiry() {
     var me = room.players[room.uid];
-    if (me && me.isRepainting && me.repaintWindowEndsAt && ZizoFirebase.serverNow() >= me.repaintWindowEndsAt) {
+    if (me && me.isRepainting && me.repaintWindowEndsAt && ZizoNet.serverNow() >= me.repaintWindowEndsAt) {
       room.endRepaintWindow();
       room.syncPaintCheckpoint(paintEngine.exportCompressed());
       showToolbar(false);
@@ -466,7 +482,7 @@
     var label = { lobby: '', starting: 'Get Ready', painting: 'Painting', seeking: 'Seeking', results: 'Results' };
     $('#hud-phase-label').textContent = label[phase] || '';
     if (!durations[phase]) { $('#hud-timer').textContent = ''; return; }
-    var elapsed = (ZizoFirebase.serverNow() - room.meta.phaseStartedAt) / 1000;
+    var elapsed = (ZizoNet.serverNow() - room.meta.phaseStartedAt) / 1000;
     var remaining = Math.max(0, Math.ceil(durations[phase] - elapsed));
     var mm = String(Math.floor(remaining / 60)).padStart(2, '0');
     var ss = String(remaining % 60).padStart(2, '0');

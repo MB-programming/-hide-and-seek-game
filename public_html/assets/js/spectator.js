@@ -5,7 +5,7 @@
  * Hider who has already been caught). It simply hides the HUD/toolbar/
  * buttons so the canvas fills the screen — useful for streaming/screen
  * recording without extra chrome. It does NOT change the player's role in
- * Firebase; it's a purely local rendering preference.
+ * the server; it's a purely local rendering preference.
  */
 (function (global) {
   'use strict';

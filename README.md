@@ -4,9 +4,9 @@ A web-based multiplayer camouflage/hide-and-seek game (a "Meccha Chameleon"-styl
 clone): Hiders freehand-paint their character to blend into a real 3D stage, Seekers
 hunt for the disguise. Vanilla JS + a genuine WebGL 3D scene (Three.js, loaded via
 plain CDN `<script>` tag — no bundler) for the room/characters, a small HTML5 Canvas
-for the 2D brush toolbar itself, Firebase Realtime Database for multiplayer sync, PHP
-+ MySQL admin panel — all deployable to plain shared hosting (Hostinger) with **no
-Node.js / WebSocket server / build step**.
+for the 2D brush toolbar itself, and **plain PHP + MySQL for everything else,
+including multiplayer sync** — no Firebase, no Node.js, no WebSocket server, no
+build step. Deployable to any ordinary shared host (Hostinger and similar).
 
 Note on visual fidelity: rooms and props are built from simple textured/colored 3D
 boxes with real lighting (see `assets/js/scene3d.js`) rather than licensed 3D art
@@ -28,10 +28,10 @@ public_html/            <- upload THIS folder's contents to your Hostinger publi
   img/stages/               uploaded stage background images land here (admin panel)
   sfx/                      uploaded sound effects land here (admin panel)
   admin/                   PHP + MySQL admin panel (password protected)
-  api/                     tiny public JSON endpoints the frontend calls
-                           (get-config.php, log-session.php)
+  api/                     public JSON endpoints the frontend calls:
+                           get-config.php, log-session.php, and game.php (the
+                           entire multiplayer backend — see section 5)
 sql/schema.sql            import this once via phpMyAdmin
-firebase-rules.json        paste into Firebase console > Realtime Database > Rules
 README.md                  this file
 ```
 
@@ -39,31 +39,7 @@ Everything under `public_html/` is meant to be uploaded as-is (FTP or Hostinger'
 Manager) directly into your hosting account's `public_html`. Nothing outside that
 folder needs to go on the server.
 
-## 2. Firebase setup guide (free tier)
-
-1. Go to https://console.firebase.google.com and click **Add project**. Name it
-   anything (e.g. "zizo-hide"). You can disable Google Analytics for this project —
-   it isn't used.
-2. Once the project is created, click the **</>** (web) icon on the project overview
-   page to register a web app. Give it any nickname and click **Register app**. Firebase
-   will show you a `firebaseConfig` object — copy it.
-3. Open `public_html/assets/js/firebase-config.js` and paste your values into the
-   placeholders (`apiKey`, `authDomain`, `databaseURL`, `projectId`, `storageBucket`,
-   `messagingSenderId`, `appId`).
-4. In the Firebase console left sidebar, go to **Build > Realtime Database** and click
-   **Create Database**. Choose any location close to your players, and start in
-   **locked mode** (we'll paste our own rules next).
-5. Still in Realtime Database, click the **Rules** tab, delete everything there, and
-   paste the entire contents of `firebase-rules.json` from this repo. Click **Publish**.
-6. Go to **Build > Authentication > Sign-in method** and enable **Anonymous**
-   sign-in. This is the only auth method the game uses — every browser tab gets a
-   stable anonymous `uid` used to identify "who owns which player" in the database
-   (see `firebase-rules.json` and `assets/js/room.js` for how that's used).
-7. That's it — no Cloud Functions, no paid tier required. The free "Spark" plan's
-   Realtime Database quota (1 GB stored, 10 GB/month downloaded) comfortably covers
-   casual play; see "Bandwidth notes" below for why.
-
-## 3. Hostinger (or any PHP + MySQL shared host) setup
+## 2. Hostinger (or any PHP + MySQL shared host) setup
 
 1. **Upload files.** Using Hostinger's File Manager or an FTP client, upload the
    entire contents of this repo's `public_html/` folder into your hosting account's
@@ -76,22 +52,25 @@ folder needs to go on the server.
 3. **Import the schema.** Open **phpMyAdmin** for that database, go to the **Import**
    tab, choose `sql/schema.sql` from this repo, and run the import. This creates all
    tables and seeds: a default admin login, the 4 starter stages, default gameplay
-   settings, and empty sound/log tables.
+   settings, and empty sound/log/room tables.
 4. **Configure the admin panel's DB connection.** Copy
    `public_html/admin/config.sample.php` to `public_html/admin/config.php` and
    fill in `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` with the values from step
    2. `config.php` is gitignored on purpose (real DB credentials shouldn't sit
-   in version control) — upload it to your host manually alongside everything
-   else.
+   in version control) — **upload it to your host manually**, since a plain
+   `git clone`/download of this repo will not include it.
 5. **Log in.** Visit `https://yourdomain.com/admin/login.php`.
    - Default login: **admin / zizo-admin-2026**
    - **Change this immediately** — easiest way: generate a new hash locally
      (`php -r "echo password_hash('yournewpassword', PASSWORD_DEFAULT);"`) and update
      the `admins.password_hash` column for the `admin` row via phpMyAdmin.
 6. Done — visit `https://yourdomain.com/index.html` to play. No further server
-   configuration, no cron jobs, no persistent processes.
+   configuration, no cron jobs, no persistent processes. If a page loads but the map
+   list is empty or nothing happens when you click Create/Start, step 2-4 (the MySQL
+   connection) is almost always the cause — check that `admin/config.php` actually
+   exists on the server and `admin/login.php` loads without a 500 error.
 
-## 4. Using the admin panel
+## 3. Using the admin panel
 
 - **Stages** (`admin/stages.php`): add/edit maps. Set the room's wall height and
   floor/wall colors, and optionally upload a floor texture photo (JPG/PNG/WEBP); if
@@ -100,7 +79,8 @@ folder needs to go on the server.
   real 3D room built by `assets/js/scene3d.js` — use it to click-drag camouflage zone
   boxes (each with its own height + color, becoming a real lit 3D prop), place
   Hider/Seeker spawn points, and set the movement boundary. This all writes directly
-  into the `config_json` column that the frontend reads via `api/get-config.php`.
+  into the `config_json` column that the frontend reads via `api/get-config.php`
+  and that `api/game.php` reads server-side to place spawns when a round starts.
 - **Sounds** (`admin/sounds.php`): upload mp3/ogg/wav/m4a files and assign them to an
   event (`round_start`, `painting_end`, `seeker_released`, `catch`, `round_over`,
   `victory`, `defeat`, `ambient`), either globally or overridden per stage. Sounds are
@@ -109,81 +89,124 @@ folder needs to go on the server.
   form (Seeker count, painting/round duration, repaint limit, max public rooms, etc).
 - **Session Logs** (`admin/logs.php`): every finished round is logged here (room code,
   map, player/seeker/hider/caught counts, winner, duration) via `api/log-session.php`,
-  called once by whichever browser is currently the room's host.
+  called once by whichever browser happens to be the room's creator when it ends.
 
 Any changes here take effect immediately for new rounds — the frontend always reads
 current stage/sound/settings data from MySQL via `api/get-config.php`; it never bakes
 stage data into the JS bundle.
 
-## 5. Extending the game yourself
+## 4. Extending the game yourself
 
 - **New stage**: add it from `admin/stages.php` — no code changes needed. Wall
   height/colors, zone box heights/colors, floor texture, spawns and bounds are all
-  data-driven from `config_json` and consumed by `assets/js/scene3d.js`.
+  data-driven from `config_json` and consumed by `assets/js/scene3d.js` (rendering)
+  and `api/game.php`'s `action_start_round` (spawn placement).
 - **New pose**: add a shape to `buildSilhouettePath()` in `assets/js/paint.js`, then
   add a matching button (`data-pose="yourpose"`) to the `.pose-buttons` block in
-  `game.html`. The Firebase rule `players/$playerId/pose` also needs the new value
-  added to its `.validate` enum in `firebase-rules.json`.
+  `game.html`, and add `'yourpose'` to the pose allowlists in `api/game.php`
+  (`action_update_transform` and `action_set_pose` both check
+  `in_array($pose, ['stand','crouch','lean'], true)`).
 - **New sound event**: just upload one from `admin/sounds.php` with a new
   `event_key`, then call `ZizoAudio.play('your_event_key', mapSlug)` from
   `assets/js/game-main.js` wherever that moment happens.
 
-## 6. How the painting/sync mechanic works (read this before touching paint.js/room.js/scene3d.js)
+## 5. How multiplayer sync works (read this before touching room.js/api/game.php)
 
-- Every Hider paints on a **fixed 48x64px canvas** regardless of their screen size
-  (`ZizoPaint.PAINT_W/PAINT_H`) — this 2D canvas (and the brush toolbar UI around it)
-  is completely unchanged from a flat-2D-game implementation; painting itself has
-  nothing to do with WebGL. Painting big on a phone or small on a monitor produces
-  the exact same small PNG.
-- The brush is confined to the body silhouette using
-  `globalCompositeOperation = 'source-atop'` rather than a clip path per stroke — see
-  the big comment at the top of `assets/js/paint.js`.
-- That same small PNG becomes the actual **3D character's material texture**
-  (`THREE.TextureLoader`, see `player.js`) — a box "torso" + sphere "head" both wear
-  it, so the exact 2D brush strokes wrap around the real 3D body Seekers see in the
-  room.
-- **The painted PNG is only sent over the network on explicit checkpoints** (the
-  "Confirm" button, or automatically once when the painting phase timer ends) — never
-  per brush stroke. This is the single biggest bandwidth control in the app; see
-  `Room.prototype.syncPaintCheckpoint` in `assets/js/room.js`.
-- There is **no persistent server process**. One connected browser (the room
-  "host") drives the phase clock (`lobby -> starting -> painting -> seeking ->
-  results`) off `ZizoFirebase.serverNow()` (Firebase's server-time-offset trick, so
-  client clock skew can't desync countdowns) and writes phase transitions everyone
-  else just reacts to. If the host disconnects, the longest-connected remaining
-  player promotes itself after a few seconds — see `_watchHostFailover` in `room.js`.
-  This is best-effort, appropriate for small casual rooms, not a formal consensus
-  protocol.
+There is **no persistent server process and no external realtime service** — the
+entire multiplayer backend is one PHP file, `api/game.php`, storing state in two
+MySQL tables (`rooms`, `room_players`). Every client just polls it repeatedly:
 
-## 7. Security notes (read before opening this to strangers)
+- **The client (`assets/js/room.js`)** calls `action=get_state` on a loop —
+  every ~700ms during an active round (starting/painting/seeking), backing off to
+  ~1500ms while idling in the lobby or looking at results. It's a recursive
+  `setTimeout` chain, not `setInterval`, so a slow response can never cause request
+  pileup — the next poll only fires after the previous one finishes.
+- **The server drives its own phase clock.** Every single `get_state` call also runs
+  `tick_room()`, which checks elapsed time (and win conditions) and, if due, advances
+  `lobby -> starting -> painting -> seeking -> results` via a plain conditional
+  `UPDATE ... WHERE phase = 'x' AND ...` — never a read-then-write. That means *any*
+  client's poll can safely advance the room; two clients polling at the same instant
+  can't double-process the same transition, because whichever `UPDATE` commits first
+  changes the row so the second one's `WHERE phase = 'x'` no longer matches. This is
+  strictly simpler than this project's earlier Firebase-based design, which needed a
+  single elected "host" browser tab to drive the clock and a failover mechanism for
+  when that tab disconnected — none of that exists anymore.
+- **Auth is a public `player_id` + a secret `token`**, returned once when you create
+  or join a room and kept in `sessionStorage` (see `room.js`). Every mutating request
+  (move, paint, ready, catch, etc.) sends both; the server checks the token matches
+  before touching that row. `get_state` responses never include other players'
+  tokens.
+- **Catching** is one atomic conditional `UPDATE room_players SET alive=0 ...
+  WHERE ... AND role='hider' AND alive=1`, checked via the affected-row count — the
+  same "only the first one wins" guarantee Firebase's transaction used to provide.
+- **The old "catch" sound/flash event feed** doesn't exist as a separate mechanism
+  anymore either: `room.js` just diffs each poll's player list against the previous
+  one and fires a local `'catch'` event the instant a Hider's `alive` flips to false
+  — every client detects this independently on its own next poll.
+- **Painting**: every Hider paints on a fixed 48x64px canvas
+  (`ZizoPaint.PAINT_W/PAINT_H`) regardless of screen size, and that PNG is only ever
+  sent to the server on explicit checkpoints (the "Confirm" button, or automatically
+  once when the painting phase timer ends) — never per brush stroke. That same PNG
+  becomes the 3D character's material texture (`THREE.TextureLoader`, see
+  `player.js`).
+- **Clock skew**: every `api/game.php` response includes `serverTime` (server epoch
+  ms); the client keeps a running `offset` from it (`assets/js/net.js`) so phase
+  countdowns stay correct even on a device with a wrong clock, the same purpose
+  Firebase's server-time-offset trick used to serve.
+- **Disconnects**: there's no realtime presence system, so a player who stops
+  polling (closed tab, lost connection) is just detected by staleness — `tick_room()`
+  deletes any `room_players` row whose `last_seen` heartbeat is more than 20 seconds
+  old. A player who merely refreshes the page resumes their same identity instead
+  (see `Room.prototype.resume` in `room.js`, backed by the `sessionStorage` token).
 
-- **Trust model**: because there's no backend game server, catch resolution
-  (`Room.prototype.attemptCatch`) needs a Seeker's browser to be able to flip a
-  Hider's `alive` field. The Firebase rules therefore allow any signed-in room
-  participant to write any player's node (see the comment above
-  `players/$playerId` in `firebase-rules.json`), rather than only their own uid.
-  Field-level `.validate` rules bound the *shape and size* of what can be written
-  (nickname length, enum roles/poses, a hard cap on the painted-texture string
-  length), but a technically sophisticated player could use devtools to forge
-  another player's position or catch status. This is an accepted tradeoff for a
-  casual party game; if you need real anti-cheat, that logic would need to move into
-  a small authoritative backend (e.g. a Cloud Function) that this project
-  deliberately avoids to stay on plain PHP shared hosting.
+### Load/bandwidth tuning
+
+This design intentionally trades a bit of latency for much lower server load than a
+push-based approach — appropriate for ordinary shared hosting, per the project's
+requirements. If you need to tune it further:
+
+- `IDLE_POLL_MS` / `ACTIVE_POLL_MS` in `assets/js/room.js` — polling cadence.
+- `TRANSFORM_THROTTLE_MS` in `assets/js/room.js` — how often movement updates are
+  sent (movement itself stays optimistic/instant on your own screen regardless; this
+  only affects how fresh *other* players look).
+- `LIST_POLL_MS` in `assets/js/matchmaking.js` — how often the public room browser
+  refreshes (not latency-sensitive, kept slow by default).
+- Every `room_players` row is one small MySQL UPDATE per poll/action — indexed by
+  primary key / the `(room_code, player_id)` unique key, so this scales fine to the
+  project's target of small casual rooms (2-10 players) even on modest shared
+  hosting, but wasn't designed for hundreds of concurrent rooms.
+
+## 6. Security notes (read before opening this to strangers)
+
+- **Trust model**: because there's no separately-authenticated backend beyond the
+  per-player token described above, `api/game.php` allows any player who knows a
+  room's code to join it, and any authenticated player-in-that-room to attempt a
+  catch on any other player id in that same room (necessary for the catch mechanic
+  itself — a Seeker's request has to be able to flip a *different* player's `alive`
+  field). Field-level validation (nickname length, enum roles/poses, a hard cap on
+  the painted-texture string length, numeric clamps on room settings) bounds what
+  can be written, but a technically sophisticated player could still forge their own
+  position or catch attempts via devtools. This is an accepted tradeoff for a casual
+  party game; real anti-cheat would need a more defensive server design than this
+  project's "keep it simple, run anywhere" scope allows for.
 - **Admin panel**: password-protected (bcrypt via PHP's `password_hash`), CSRF
   tokens on every form, PDO prepared statements everywhere, upload validation
   (`getimagesize()` + MIME allowlist for images, extension allowlist for audio), and
   `.htaccess` files in `img/stages/` and `sfx/` that refuse to execute anything as
   PHP even if an attacker somehow got a disguised file past validation.
-- **Change the default admin password** immediately after first login (see step 5
-  above) — the seeded hash is public in this repo's `sql/schema.sql`.
+- **Change the default admin password** immediately after first login (see section 2
+  step 5) — the seeded hash is public in this repo's `sql/schema.sql`.
+- **`admin/config.php`** holds your real database password — it's gitignored
+  precisely so it never ends up in a public repo or commit history; don't
+  accidentally commit or share it.
 
-## 8. Known limitations
+## 7. Known limitations
 
-- Host failover, painted-texture sync, and phase timing are all best-effort
-  client-driven mechanisms appropriate for a casual browser game — not a
-  competitive-integrity guarantee.
-- A player who force-quits mid-round is simply removed from the room
-  (`onDisconnect().remove()`); their painted sprite disappears rather than lingering.
+- Sync is poll-based, not push-based: expect up to one polling interval's worth of
+  latency (see section 5) before you see another player's new position, a catch, or
+  a phase change — a deliberate tradeoff for running well on ordinary shared hosting
+  instead of needing a persistent process.
+- Disconnect detection is heartbeat/staleness-based (20s timeout), not instant.
 - The 4 built-in stages ship as art-free 3D rooms (textured/colored boxes with real
   lighting, no external models/images) so the project has zero binary art
   dependencies out of the box — upload a floor texture photo per stage from the
@@ -198,12 +221,10 @@ stage data into the JS bundle.
   last 8+ years, but a truly ancient or very low-end device could still struggle more
   with a lit 3D scene than it would with a flat 2D canvas.
 
-## 9. Local testing without Hostinger
+## 8. Local testing without Hostinger
 
-You can serve `public_html/` with any static file server for frontend testing (e.g.
-`php -S localhost:8000 -t public_html`), but the **admin panel and `api/*.php`
-endpoints need a real MySQL connection** (PDO/MySQL), and Firebase always talks to the
-real cloud project regardless of where you host the static files — there is no local
-emulation configured in this project. Firebase's free Realtime Database emulator
-suite can be used instead if you want fully offline testing, but that's not covered
-here.
+`api/game.php` and the admin panel both need a real MySQL connection (PDO/MySQL) to
+do anything — there's no external service to fall back on, since multiplayer sync
+is 100% local to your own database now. To test locally: run any MySQL server,
+import `sql/schema.sql`, point `admin/config.php` at it, then serve the site with
+PHP's built-in server, e.g. `php -S localhost:8000 -t public_html`.

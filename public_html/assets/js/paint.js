@@ -5,7 +5,7 @@
  * resolution canvas (PAINT_W x PAINT_H) representing their character's
  * body/silhouette. Painting happens on that fixed-size canvas regardless of
  * how big it's displayed on screen, which is what keeps the exported PNG
- * (the thing we sync to every other client over Firebase) tiny — a few KB
+ * (the thing we sync to every other client via api/game.php) tiny — a few KB
  * at most — no matter how large or small any given player's device screen
  * is. See exportCompressed() at the bottom and room.js's syncPaintCheckpoint
  * for how/when that export actually gets sent over the network.
@@ -199,7 +199,7 @@
     this._pushHistory();
   };
 
-  // Returns the small PNG data URL synced to Firebase on paint checkpoints.
+  // Returns the small PNG data URL synced to the server on paint checkpoints.
   // At 48x64px this is typically only a few KB even for a busy painting —
   // see room.js syncPaintCheckpoint() for why we only call this on explicit
   // "confirm/pause painting" actions rather than after every stroke.

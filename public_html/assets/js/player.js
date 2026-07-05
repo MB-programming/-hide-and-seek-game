@@ -2,12 +2,13 @@
  * player.js — a remote or local player's 3D representation: a THREE.Group
  * (box "torso" + sphere "head") that shares one material. For Hiders, that
  * material's map is a THREE.Texture built straight from the small painted
- * PNG synced via Firebase (see paint.js/room.js) — so the exact same brush
- * work the player did in the 2D toolbar gets wrapped over their 3D body.
- * Seekers get a flat, clearly-visible color instead (never camouflaged).
+ * PNG synced via api/game.php (see paint.js/room.js) — so the exact same
+ * brush work the player did in the 2D toolbar gets wrapped over their 3D
+ * body. Seekers get a flat, clearly-visible color instead (never
+ * camouflaged).
  *
- * Coordinate note: Firebase player.x/y map directly onto Three.js world X/Z
- * (see scene3d.js header) — no extra transform needed here.
+ * Coordinate note: player.x/y map directly onto Three.js world X/Z (see
+ * scene3d.js header) — no extra transform needed here.
  */
 (function (global) {
   'use strict';
