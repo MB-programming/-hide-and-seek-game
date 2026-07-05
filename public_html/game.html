@@ -25,7 +25,10 @@
   </header>
 
   <main id="stage-wrap">
-    <canvas id="stage-canvas" width="960" height="540"></canvas>
+    <!-- Sized responsively by game-main.js's onResize() (renderer.setSize),
+         not by fixed width/height attributes — this is a real WebGL 3D
+         viewport, not a fixed-resolution 2D canvas. -->
+    <canvas id="stage-canvas"></canvas>
 
     <div id="catch-flash" class="catch-flash hidden"></div>
 
@@ -109,6 +112,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+<!-- Three.js: plain global <script> build (no bundler/ES modules needed), r128
+     for broad old-browser compatibility. Powers the real 3D room/characters
+     — see scene3d.js and player.js. -->
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
 
 <script src="assets/js/firebase-config.js"></script>
 <script src="assets/js/firebase-init.js"></script>
@@ -117,6 +124,7 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/audio.js"></script>
 <script src="assets/js/stages.js"></script>
+<script src="assets/js/scene3d.js"></script>
 <script src="assets/js/paint.js"></script>
 <script src="assets/js/player.js"></script>
 <script src="assets/js/input.js"></script>

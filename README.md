@@ -1,10 +1,18 @@
 # ZIZO HIDE
 
 A web-based multiplayer camouflage/hide-and-seek game (a "Meccha Chameleon"-style
-clone): Hiders freehand-paint their character to blend into the stage, Seekers hunt
-for the disguise. Vanilla JS + HTML5 Canvas frontend, Firebase Realtime Database for
-multiplayer sync, PHP + MySQL admin panel — all deployable to plain shared hosting
-(Hostinger) with **no Node.js / WebSocket server / build step**.
+clone): Hiders freehand-paint their character to blend into a real 3D stage, Seekers
+hunt for the disguise. Vanilla JS + a genuine WebGL 3D scene (Three.js, loaded via
+plain CDN `<script>` tag — no bundler) for the room/characters, a small HTML5 Canvas
+for the 2D brush toolbar itself, Firebase Realtime Database for multiplayer sync, PHP
++ MySQL admin panel — all deployable to plain shared hosting (Hostinger) with **no
+Node.js / WebSocket server / build step**.
+
+Note on visual fidelity: rooms and props are built from simple textured/colored 3D
+boxes with real lighting (see `assets/js/scene3d.js`) rather than licensed 3D art
+assets — genuinely 3D and lit, but stylized/low-poly rather than photorealistic.
+Admins can upload a real floor photo per stage from the admin panel for a more
+grounded look (`admin/stages.php`).
 
 ## 1. Folder structure
 
@@ -85,13 +93,14 @@ folder needs to go on the server.
 
 ## 4. Using the admin panel
 
-- **Stages** (`admin/stages.php`): add/edit maps. Optionally upload a background
-  image (JPG/PNG/WEBP); if you don't, the stage uses one of the built-in
-  procedurally-drawn backgrounds (see `assets/js/stages.js`) so the game is fully
-  playable with zero art assets. Use the click-to-draw canvas editor to place
-  camouflage zones (labeled rectangles), Hider/Seeker spawn points, and the movement
-  boundary — this writes directly into the `config_json` column that the frontend
-  reads via `api/get-config.php`.
+- **Stages** (`admin/stages.php`): add/edit maps. Set the room's wall height and
+  floor/wall colors, and optionally upload a floor texture photo (JPG/PNG/WEBP); if
+  you don't, the floor uses a built-in procedural checker pattern so the game is
+  fully playable with zero art assets. The editor is a top-down 2D *blueprint* of the
+  real 3D room built by `assets/js/scene3d.js` — use it to click-drag camouflage zone
+  boxes (each with its own height + color, becoming a real lit 3D prop), place
+  Hider/Seeker spawn points, and set the movement boundary. This all writes directly
+  into the `config_json` column that the frontend reads via `api/get-config.php`.
 - **Sounds** (`admin/sounds.php`): upload mp3/ogg/wav/m4a files and assign them to an
   event (`round_start`, `painting_end`, `seeker_released`, `catch`, `round_over`,
   `victory`, `defeat`, `ambient`), either globally or overridden per stage. Sounds are
@@ -108,10 +117,9 @@ stage data into the JS bundle.
 
 ## 5. Extending the game yourself
 
-- **New stage**: add it from `admin/stages.php` — no code changes needed unless you
-  want a new *procedural* (art-free) background style, in which case add a new
-  renderer function to the `RENDERERS` map in `assets/js/stages.js` and reference its
-  key as `"procedural"` in the stage's JSON config.
+- **New stage**: add it from `admin/stages.php` — no code changes needed. Wall
+  height/colors, zone box heights/colors, floor texture, spawns and bounds are all
+  data-driven from `config_json` and consumed by `assets/js/scene3d.js`.
 - **New pose**: add a shape to `buildSilhouettePath()` in `assets/js/paint.js`, then
   add a matching button (`data-pose="yourpose"`) to the `.pose-buttons` block in
   `game.html`. The Firebase rule `players/$playerId/pose` also needs the new value
@@ -120,14 +128,20 @@ stage data into the JS bundle.
   `event_key`, then call `ZizoAudio.play('your_event_key', mapSlug)` from
   `assets/js/game-main.js` wherever that moment happens.
 
-## 6. How the painting/sync mechanic works (read this before touching paint.js/room.js)
+## 6. How the painting/sync mechanic works (read this before touching paint.js/room.js/scene3d.js)
 
 - Every Hider paints on a **fixed 48x64px canvas** regardless of their screen size
-  (`ZizoPaint.PAINT_W/PAINT_H`). Painting big on a phone or small on a monitor
-  produces the exact same small PNG.
+  (`ZizoPaint.PAINT_W/PAINT_H`) — this 2D canvas (and the brush toolbar UI around it)
+  is completely unchanged from a flat-2D-game implementation; painting itself has
+  nothing to do with WebGL. Painting big on a phone or small on a monitor produces
+  the exact same small PNG.
 - The brush is confined to the body silhouette using
   `globalCompositeOperation = 'source-atop'` rather than a clip path per stroke — see
   the big comment at the top of `assets/js/paint.js`.
+- That same small PNG becomes the actual **3D character's material texture**
+  (`THREE.TextureLoader`, see `player.js`) — a box "torso" + sphere "head" both wear
+  it, so the exact 2D brush strokes wrap around the real 3D body Seekers see in the
+  room.
 - **The painted PNG is only sent over the network on explicit checkpoints** (the
   "Confirm" button, or automatically once when the painting phase timer ends) — never
   per brush stroke. This is the single biggest bandwidth control in the app; see
@@ -170,9 +184,19 @@ stage data into the JS bundle.
   competitive-integrity guarantee.
 - A player who force-quits mid-round is simply removed from the room
   (`onDisconnect().remove()`); their painted sprite disappears rather than lingering.
-- The 4 built-in stages ship as art-free procedural backgrounds (flat shapes/colors)
-  so the project has zero binary art dependencies out of the box — upload your own
-  background images from the admin panel for a more polished look.
+- The 4 built-in stages ship as art-free 3D rooms (textured/colored boxes with real
+  lighting, no external models/images) so the project has zero binary art
+  dependencies out of the box — upload a floor texture photo per stage from the
+  admin panel for a more polished/realistic look. Walls and zone props are always
+  simple lit boxes, not photorealistic 3D models — a full licensed 3D art pipeline is
+  out of scope for this project.
+- The camera is a fixed-offset third-person "chase" camera (no manual orbit/mouse
+  look) — kept deliberately simple so it never conflicts with the paint/joystick
+  touch handling. Seekers get a further-back, higher angle than Hiders for a wider
+  search view.
+- WebGL (required for the 3D scene) is broadly supported on phones from roughly the
+  last 8+ years, but a truly ancient or very low-end device could still struggle more
+  with a lit 3D scene than it would with a flat 2D canvas.
 
 ## 9. Local testing without Hostinger
 

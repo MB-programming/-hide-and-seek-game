@@ -4,14 +4,16 @@
   "width": 960,
   "height": 540,
   "backgroundImage": null,
-  "procedural": "office",
+  "wallHeight": 220,
+  "floorColor": "#9aa0a6",
+  "wallColor": "#dfe3e6",
   "bounds": { "x": 30, "y": 260, "w": 900, "h": 250 },
   "zones": [
-    { "x": 60, "y": 320, "w": 130, "h": 70, "label": "Filing Cabinet" },
-    { "x": 240, "y": 300, "w": 110, "h": 110, "label": "Server Rack" },
-    { "x": 420, "y": 340, "w": 150, "h": 60, "label": "Meeting Table" },
-    { "x": 600, "y": 290, "w": 90, "h": 120, "label": "Potted Plant Wall" },
-    { "x": 760, "y": 310, "w": 120, "h": 90, "label": "Water Cooler Nook" }
+    { "x": 60, "y": 320, "w": 130, "h": 70, "height": 110, "color": "#4a4f57", "label": "Filing Cabinet" },
+    { "x": 240, "y": 300, "w": 110, "h": 110, "height": 170, "color": "#2c2f33", "label": "Server Rack" },
+    { "x": 420, "y": 340, "w": 150, "h": 60, "height": 70, "color": "#c7b299", "label": "Meeting Table" },
+    { "x": 600, "y": 290, "w": 90, "h": 120, "height": 150, "color": "#4f7d4a", "label": "Potted Plant Wall" },
+    { "x": 760, "y": 310, "w": 120, "h": 90, "height": 100, "color": "#5a7fa6", "label": "Water Cooler Nook" }
   ],
   "hiderSpawns": [[90, 470], [270, 470], [450, 470], [630, 470], [810, 470]],
   "seekerSpawns": [[480, 480]]

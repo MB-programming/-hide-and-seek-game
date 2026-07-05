@@ -120,11 +120,17 @@
   }
 
   // ---- Stage tap/click (seeker catch attempts, eyedropper sampling) ------
-  // onPick(worldX, worldY) is called on every click/tap on the stage canvas.
+  // onPick(ndcX, ndcY) is called on every click/tap on the stage canvas, with
+  // coordinates already converted to Three.js "normalized device" space
+  // (-1..1 on each axis, origin at canvas center, +Y up) — exactly what
+  // THREE.Raycaster.setFromCamera() expects, since the 3D scene is picked by
+  // raycasting rather than 2D pixel math.
   function bindStagePick(canvas, onPick) {
     canvas.addEventListener('pointerdown', function (e) {
-      var p = toLocal(canvas, e.clientX, e.clientY);
-      onPick(p.x, p.y, e);
+      var rect = canvas.getBoundingClientRect();
+      var ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      var ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+      onPick(ndcX, ndcY, e);
     });
   }
 

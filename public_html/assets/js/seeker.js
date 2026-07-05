@@ -1,13 +1,13 @@
 /*
  * seeker.js — Seeker-side waiting screen + catch-attempt resolution.
  *
- * Catch flow: a Seeker taps/clicks somewhere on the stage. We hit-test that
- * point against every other live player's on-screen bounding box (see
- * player.js containsPoint). Tapping a live Hider resolves as a correct
- * catch through room.attemptCatch's transaction; tapping anything else
- * (empty scenery, another Seeker, an already-caught Hider) is a wrong
- * catch and applies a brief input-freeze penalty so guessing wildly has a
- * real cost.
+ * Catch flow: a Seeker taps/clicks somewhere on the stage; game-main.js
+ * resolves that tap into a target player id (or null) via a THREE.Raycaster
+ * hit-test against the 3D character meshes, then hands the result here.
+ * A resolved Hider id goes through room.attemptCatch's transaction; a null
+ * target (empty scenery, another Seeker, an already-caught Hider) is a
+ * wrong catch and applies a brief input-freeze penalty so guessing wildly
+ * has a real cost.
  */
 (function (global) {
   'use strict';
@@ -32,18 +32,11 @@
     frozenUntil = Math.max(frozenUntil, Date.now() + ms);
   }
 
-  // playersMap: { id -> ZizoPlayer.Player instance }. Returns a Promise
-  // resolving to { hit: bool, correct: bool|null }.
-  async function attemptCatchAt(room, playersMap, worldX, worldY, penaltySec) {
+  // targetId is whatever game-main.js's raycaster resolved the tap/click to
+  // (a hider's player id, or null if the ray missed every hider mesh).
+  // Returns a Promise resolving to { hit: bool, correct: bool|null }.
+  async function resolveCatchAttempt(room, targetId, penaltySec) {
     if (isFrozen()) return { hit: false, correct: null };
-
-    var targetId = null;
-    Object.keys(playersMap).forEach(function (id) {
-      if (id === room.uid) return;
-      var p = playersMap[id];
-      if (!p.alive || p.role === 'seeker') return;
-      if (p.containsPoint(worldX, worldY)) targetId = id;
-    });
 
     if (!targetId) {
       freezeMs((penaltySec || 3) * 1000);
@@ -58,6 +51,6 @@
   global.ZizoSeeker = {
     init: initSeekerWaiting,
     isFrozen: isFrozen,
-    attemptCatchAt: attemptCatchAt
+    resolveCatchAttempt: resolveCatchAttempt
   };
 })(window);

@@ -2,23 +2,36 @@
  * game-main.js — orchestrates a single game.html session: joining/creating
  * the room, the render/movement loop, phase-driven overlay switching, the
  * painting toolbar, and catch input. This is the file that ties together
- * room.js (network state), player.js (rendering), paint.js (brush engine),
- * input.js (controls) and stages.js (background) into one running game.
+ * room.js (network state), player.js (3D character meshes), paint.js (2D
+ * brush engine, unchanged — see its file header), input.js (controls) and
+ * scene3d.js (the actual 3D room) into one running game.
+ *
+ * Rendering is real WebGL 3D via Three.js (CDN script tag, see game.html) —
+ * a genuine 3D room you move around in and look across, not a flat 2D
+ * scene. A player's Firebase x/y still map straight onto Three.js world X/Z
+ * (see scene3d.js header) so none of the multiplayer sync code in room.js
+ * needed to change for this — only the rendering/input/admin-editor layers
+ * did.
  */
 (function () {
   'use strict';
 
   var $ = ZizoUtils.qs;
-  var MOVE_SPEED = 160; // world px/sec
+  var MOVE_SPEED = 160; // world units/sec (same numeric scale as the old 2D version)
+  var CAMERA_UP = { hider: 190, seeker: 260 };
+  var CAMERA_BACK = { hider: 220, seeker: 320 };
 
   var room = new ZizoRoom.Room();
   var config = null;
   var stage = null;
-  var stageBg = null; // offscreen canvas with the rendered background (see stages.js)
+  var sceneData = null; // { scene, floor, walls, zoneMeshes, pickableMeshes } — see scene3d.js
   var stageCanvas = $('#stage-canvas');
-  var stageCtx = stageCanvas.getContext('2d');
+  var renderer = new THREE.WebGLRenderer({ canvas: stageCanvas, antialias: true });
+  var camera = new THREE.PerspectiveCamera(68, 1, 1, 6000);
+  var raycaster = new THREE.Raycaster();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // cap DPR for low-end phones
 
-  var playerEntities = {}; // id -> ZizoPlayer.Player
+  var playerEntities = {}; // id -> ZizoPlayer.Player (each wraps a THREE.Group)
   var localPos = { x: 0, y: 0 };
   var localPose = 'stand';
   var lastFrameTime = null;
@@ -71,7 +84,18 @@
     room.on('players', onPlayersSnapshot);
     room.on('event', onRoomEvent);
 
+    onResize();
+    window.addEventListener('resize', onResize);
+
     requestAnimationFrame(loop);
+  }
+
+  function onResize() {
+    var rect = stageCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    renderer.setSize(rect.width, rect.height, false);
+    camera.aspect = rect.width / rect.height;
+    camera.updateProjectionMatrix();
   }
 
   // ---- stage loading ------------------------------------------------
@@ -81,10 +105,25 @@
     currentMapSlug = mapSlug;
     stage = await ZizoStages.loadStage(mapSlug);
     room.stage = stage;
-    stageCanvas.width = stage.width;
-    stageCanvas.height = stage.height;
-    stageBg = ZizoStages.renderBackground(stage, stageCtx);
+
+    if (sceneData) disposeSceneData(sceneData);
+    sceneData = ZizoScene3D.buildScene(stage);
+    // Re-parent any already-created player meshes into the freshly built
+    // scene (only matters if the host changes map while still in the
+    // lobby, after players have already joined).
+    Object.keys(playerEntities).forEach(function (id) {
+      sceneData.scene.add(playerEntities[id].group);
+    });
+
     ZizoAudio.playAmbient(mapSlug);
+  }
+
+  function disposeSceneData(old) {
+    old.pickableMeshes.forEach(function (mesh) {
+      mesh.geometry.dispose();
+      if (mesh.material.map) mesh.material.map.dispose();
+      mesh.material.dispose();
+    });
   }
 
   // ---- HUD / overlays -------------------------------------------------
@@ -243,11 +282,19 @@
 
   function onPlayersSnapshot(players) {
     Object.keys(players).forEach(function (id) {
-      if (playerEntities[id]) playerEntities[id].update(players[id]);
-      else playerEntities[id] = new ZizoPlayer.Player(id, players[id]);
+      if (playerEntities[id]) {
+        playerEntities[id].update(players[id]);
+      } else {
+        var entity = new ZizoPlayer.Player(id, players[id]);
+        playerEntities[id] = entity;
+        if (sceneData) sceneData.scene.add(entity.group);
+      }
     });
     Object.keys(playerEntities).forEach(function (id) {
-      if (!players[id]) delete playerEntities[id];
+      if (!players[id]) {
+        if (sceneData) playerEntities[id].dispose(sceneData.scene);
+        delete playerEntities[id];
+      }
     });
     // Whenever the server assigns a new role (round start, or a "Play
     // Again" reset), it also writes a fresh spawn x/y — resync our local,
@@ -316,31 +363,41 @@
   }
 
   // ---- stage clicks: eyedropper sampling + seeker catch attempts --------
+  // Both are resolved via a THREE.Raycaster shot from the camera through
+  // the tap/click point (bindStagePick already hands us normalized device
+  // coordinates — see input.js).
 
   function bindStageClicks() {
-    ZizoInput.bindStagePick(stageCanvas, function (x, y) {
+    ZizoInput.bindStagePick(stageCanvas, function (ndcX, ndcY) {
+      raycaster.setFromCamera({ x: ndcX, y: ndcY }, camera);
+
       if (eyedropperArmed) {
-        if (stageBg) {
-          var color = ZizoStages.sampleColor(stageBg, x, y);
-          paintEngine.setColor(color);
-          $('#brush-color').value = rgbToHex(color);
-        }
         eyedropperArmed = false;
         $('#btn-eyedropper').classList.remove('active');
+        if (sceneData) {
+          var envHits = raycaster.intersectObjects(sceneData.pickableMeshes);
+          if (envHits.length) {
+            var color = envHits[0].object.userData.color || '#ffffff';
+            paintEngine.setColor(color);
+            $('#brush-color').value = color;
+          }
+        }
         return;
       }
+
       var me = room.players[room.uid];
       if (!me || me.role !== 'seeker' || !room.meta || room.meta.phase !== 'seeking') return;
-      ZizoSeeker.attemptCatchAt(room, playerEntities, x, y, room.meta.wrongCatchPenaltySec);
+      var targetMeshes = [];
+      Object.keys(playerEntities).forEach(function (id) {
+        if (id === room.uid) return;
+        var p = playerEntities[id];
+        if (p.role !== 'hider' || !p.alive) return;
+        targetMeshes.push(p.bodyMesh, p.headMesh);
+      });
+      var hits = raycaster.intersectObjects(targetMeshes);
+      var targetId = hits.length ? hits[0].object.userData.playerId : null;
+      ZizoSeeker.resolveCatchAttempt(room, targetId, room.meta.wrongCatchPenaltySec);
     });
-  }
-
-  function rgbToHex(rgb) {
-    var m = /rgb\((\d+),(\d+),(\d+)\)/.exec(rgb);
-    if (!m) return '#ffffff';
-    return '#' + [m[1], m[2], m[3]].map(function (v) {
-      return ('0' + parseInt(v, 10).toString(16)).slice(-2);
-    }).join('');
   }
 
   // ---- touch joystick ---------------------------------------------------
@@ -379,8 +436,18 @@
     localPos.y = ZizoUtils.clamp(localPos.y + v.y * MOVE_SPEED * dt, b.y, b.y + b.h);
     room.updateTransform(localPos.x, localPos.y, localPose);
 
+    // Move the local player's 3D group immediately (optimistic), rather
+    // than waiting for the throttled Firebase round-trip in room.js to
+    // come back through onPlayersSnapshot/Player.update — keeps our own
+    // movement feeling instant while everyone else's position still comes
+    // straight from the network.
     var mine = playerEntities[room.uid];
-    if (mine) { mine.x = localPos.x; mine.y = localPos.y; }
+    if (mine) {
+      mine.x = localPos.x;
+      mine.y = localPos.y;
+      mine.group.position.x = localPos.x;
+      mine.group.position.z = localPos.y;
+    }
   }
 
   function checkRepaintWindowExpiry() {
@@ -408,19 +475,29 @@
     if (phase === 'painting') $('#seeker-wait-timer').textContent = mm + ':' + ss;
   }
 
-  function render() {
-    if (!stageBg) return;
-    stageCtx.clearRect(0, 0, stageCanvas.width, stageCanvas.height);
-    stageCtx.drawImage(stageBg, 0, 0);
+  // Fixed-offset third-person "chase" camera: sits behind+above whichever
+  // player is local (or the room center before a role is assigned) and
+  // looks down at them. Seekers get a further-back, higher angle for a
+  // wider search view; Hiders sit closer for a more immersive painting/
+  // hiding view. No mouse-look/orbit controls — kept deliberately simple so
+  // it never fights with the paint/joystick pointer handling.
+  function updateCamera() {
+    if (!stage) return;
+    var mine = playerEntities[room.uid];
+    var role = mine ? mine.role : 'hider';
+    var up = CAMERA_UP[role] || CAMERA_UP.hider;
+    var back = CAMERA_BACK[role] || CAMERA_BACK.hider;
+    var targetX = mine ? mine.group.position.x : stage.width / 2;
+    var targetZ = mine ? mine.group.position.z : stage.height / 2;
 
-    var order = Object.keys(playerEntities).sort(function (a, b) {
-      return playerEntities[a].y - playerEntities[b].y;
-    });
-    order.forEach(function (id) {
-      var p = playerEntities[id];
-      if (p.role !== 'hider' && p.role !== 'seeker') return;
-      p.draw(stageCtx, { showLabel: id === room.uid });
-    });
+    camera.position.set(targetX, up, targetZ + back);
+    camera.lookAt(targetX, ZizoPlayer.BODY_H * 0.6, targetZ);
+  }
+
+  function render() {
+    if (!sceneData) return;
+    updateCamera();
+    renderer.render(sceneData.scene, camera);
   }
 
   function loop(t) {

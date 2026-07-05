@@ -1,109 +1,130 @@
 /*
- * player.js — a remote or local player's world state + how to draw it.
+ * player.js — a remote or local player's 3D representation: a THREE.Group
+ * (box "torso" + sphere "head") that shares one material. For Hiders, that
+ * material's map is a THREE.Texture built straight from the small painted
+ * PNG synced via Firebase (see paint.js/room.js) — so the exact same brush
+ * work the player did in the 2D toolbar gets wrapped over their 3D body.
+ * Seekers get a flat, clearly-visible color instead (never camouflaged).
  *
- * Painted texture handling: `paint.data` (a small PNG data URL, see
- * paint.js) arrives from Firebase as a plain string. We only decode it into
- * an <img> when its revision number changes (paint.rev), never on every
- * render frame — decoding a data URL is comparatively expensive and rev
- * numbers only bump on explicit paint checkpoints (see room.js).
+ * Coordinate note: Firebase player.x/y map directly onto Three.js world X/Z
+ * (see scene3d.js header) — no extra transform needed here.
  */
 (function (global) {
   'use strict';
 
-  var DISPLAY_W = 56;  // on-stage rendered size in world px (independent of PAINT_W/H)
-  var DISPLAY_H = 76;
+  var BODY_W = 40, BODY_H = 90, BODY_D = 24, HEAD_R = 16;
+  var SEEKER_COLOR = 0x2b6fe0;
 
   function Player(id, data) {
     this.id = id;
-    this._img = null;
-    this._imgRev = null;
+    this._pose = null;
+    this._role = null;
+    this._paintRev = null;
+    this._textureLoader = new THREE.TextureLoader();
+
+    this.group = new THREE.Group();
+    this.material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+    this.bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(BODY_W, BODY_H, BODY_D), this.material);
+    this.headMesh = new THREE.Mesh(new THREE.SphereGeometry(HEAD_R, 14, 10), this.material);
+    this.bodyMesh.userData.playerId = id;
+    this.headMesh.userData.playerId = id;
+    this.group.add(this.bodyMesh, this.headMesh);
+
     this.update(data);
   }
 
   Player.prototype.update = function (data) {
     if (!data) return;
     this.nickname = data.nickname || '?';
-    this.role = data.role || 'hider';
     this.x = typeof data.x === 'number' ? data.x : (this.x || 0);
     this.y = typeof data.y === 'number' ? data.y : (this.y || 0);
-    this.pose = data.pose || 'stand';
     this.alive = data.alive !== false;
     this.ready = !!data.ready;
 
-    var rev = data.paint && data.paint.rev;
-    if (rev !== undefined && rev !== this._imgRev && data.paint.data) {
-      this._imgRev = rev;
-      var img = new Image();
-      img.src = data.paint.data;
-      this._img = img;
+    var role = data.role || 'hider';
+    if (role !== this._role) {
+      this._role = role;
+      this._applyRoleAppearance(role);
     }
+    this.role = role;
+
+    var pose = data.pose || 'stand';
+    if (pose !== this._pose) {
+      this._pose = pose;
+      this._applyPose(pose);
+    }
+
+    if (role !== 'seeker') {
+      var rev = data.paint && data.paint.rev;
+      if (rev !== undefined && rev !== this._paintRev && data.paint.data) {
+        this._paintRev = rev;
+        this._loadPaintTexture(data.paint.data);
+      }
+    }
+
+    this.material.transparent = !this.alive;
+    this.material.opacity = this.alive ? 1 : 0.35;
+
+    this.group.position.set(this.x, 0, this.y);
   };
 
-  // Draws this player onto the stage canvas at world coordinates.
-  // `revealAll` is used in spectator/results view where hiders should be
-  // visible regardless of camouflage (e.g. a light outline), and for
-  // caught players who are shown as translucent ghosts.
-  Player.prototype.draw = function (ctx, opts) {
-    opts = opts || {};
-    var x = this.x - DISPLAY_W / 2;
-    var y = this.y - DISPLAY_H;
-
-    ctx.save();
-    if (!this.alive) ctx.globalAlpha = 0.35;
-
-    if (this.role === 'seeker') {
-      this._drawSeekerSprite(ctx, x, y);
+  Player.prototype._applyRoleAppearance = function (role) {
+    if (role === 'seeker') {
+      this.material.map = null;
+      this.material.color.setHex(SEEKER_COLOR);
     } else {
-      this._drawHiderSprite(ctx, x, y);
+      this.material.color.setHex(0xffffff);
+      // Leave any existing painted map in place if one was already loaded
+      // (e.g. rejoining mid-round); otherwise the blank white body from
+      // paint.js's default silhouette fill shows through once it arrives.
     }
-
-    if (opts.showLabel) {
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.font = '11px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(this.nickname, this.x, y - 4);
-    }
-    ctx.restore();
+    this.material.needsUpdate = true;
   };
 
-  Player.prototype._drawHiderSprite = function (ctx, x, y) {
-    ctx.save();
-    ctx.translate(x, y);
-    ZizoPaint.clipSilhouette(ctx, this.pose, DISPLAY_W, DISPLAY_H);
-    if (this._img && this._img.complete) {
-      ctx.drawImage(this._img, 0, 0, DISPLAY_W, DISPLAY_H);
+  Player.prototype._loadPaintTexture = function (dataUrl) {
+    var material = this.material;
+    this._textureLoader.load(dataUrl, function (tex) {
+      tex.needsUpdate = true;
+      material.map = tex;
+      material.needsUpdate = true;
+    });
+  };
+
+  // Poses reshape the 3D body via simple scale/rotation transforms (no
+  // skeletal animation) — crouch squashes+widens the torso, lean tilts the
+  // whole group about its base, matching the pose buttons in game.html.
+  Player.prototype._applyPose = function (pose) {
+    this.group.rotation.set(0, 0, 0);
+    this.bodyMesh.scale.set(1, 1, 1);
+
+    if (pose === 'crouch') {
+      this.bodyMesh.scale.set(1.15, 0.5, 1.15);
+      var h = BODY_H * 0.5;
+      this.bodyMesh.position.y = h / 2;
+      this.headMesh.position.y = h + HEAD_R * 0.7;
+    } else if (pose === 'lean') {
+      this.group.rotation.z = -0.35;
+      this.bodyMesh.position.y = BODY_H / 2;
+      this.headMesh.position.y = BODY_H + HEAD_R * 0.8;
     } else {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, DISPLAY_W, DISPLAY_H);
+      this.bodyMesh.position.y = BODY_H / 2;
+      this.headMesh.position.y = BODY_H + HEAD_R * 0.8;
     }
-    ctx.restore();
   };
 
-  Player.prototype._drawSeekerSprite = function (ctx, x, y) {
-    // Seekers are never camouflaged — always a clearly visible character.
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.fillStyle = '#2b6fe0';
-    ctx.beginPath();
-    ctx.arc(DISPLAY_W * 0.5, DISPLAY_H * 0.16, DISPLAY_W * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(DISPLAY_W * 0.24, DISPLAY_H * 0.28, DISPLAY_W * 0.52, DISPLAY_H * 0.68);
-    ctx.fillStyle = '#ffe066';
-    ctx.fillRect(DISPLAY_W * 0.3, DISPLAY_H * 0.05, DISPLAY_W * 0.4, DISPLAY_H * 0.1);
-    ctx.restore();
-  };
-
-  // Hit-test used by seekers tapping/clicking to catch: true if (px,py) in
-  // world coords lands within this player's on-screen bounding box.
-  Player.prototype.containsPoint = function (px, py) {
-    var x = this.x - DISPLAY_W / 2;
-    var y = this.y - DISPLAY_H;
-    return px >= x && px <= x + DISPLAY_W && py >= y && py <= y + DISPLAY_H;
+  Player.prototype.dispose = function (scene) {
+    scene.remove(this.group);
+    this.bodyMesh.geometry.dispose();
+    this.headMesh.geometry.dispose();
+    if (this.material.map) this.material.map.dispose();
+    this.material.dispose();
   };
 
   global.ZizoPlayer = {
     Player: Player,
-    DISPLAY_W: DISPLAY_W,
-    DISPLAY_H: DISPLAY_H
+    BODY_W: BODY_W,
+    BODY_H: BODY_H,
+    BODY_D: BODY_D,
+    HEAD_R: HEAD_R
   };
 })(window);

@@ -99,7 +99,7 @@ require __DIR__ . '/includes/header.php';
       <input type="number" name="height" id="stage-height" value="<?= (int) ($editing['height'] ?? 540) ?>">
     </div>
 
-    <label>Background image (optional — leave empty to keep the built-in procedural background)</label>
+    <label>Floor texture photo (optional — leave empty to use the built-in procedural checker floor)</label>
     <input type="file" name="background_image" id="bg-file" accept="image/*">
     <?php if (!empty($editing['background_image'])): ?>
       <p class="muted">Current: <?= htmlspecialchars($editing['background_image']) ?></p>
@@ -107,20 +107,38 @@ require __DIR__ . '/includes/header.php';
 
     <label><input type="checkbox" name="is_active" style="width:auto" <?= empty($editing) || $editing['is_active'] ? 'checked' : '' ?>> Active (selectable when creating a room)</label>
 
-    <h3>Zone / spawn editor</h3>
-    <p class="muted">Mode: draw a <b>zone</b> (camouflage object), or place a <b>hider spawn</b> / <b>seeker spawn</b> point. Click-drag for zones, single-click for spawn points.</p>
-    <div>
+    <h3>3D room appearance</h3>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:120px;">
+        <label>Wall height</label>
+        <input type="number" id="room-wall-height" value="220">
+      </div>
+      <div style="flex:1; min-width:120px;">
+        <label>Floor color</label>
+        <input type="color" id="room-floor-color" value="#8a8f78">
+      </div>
+      <div style="flex:1; min-width:120px;">
+        <label>Wall color</label>
+        <input type="color" id="room-wall-color" value="#5b5f66">
+      </div>
+    </div>
+
+    <h3>Zone / spawn blueprint editor (top-down view)</h3>
+    <p class="muted">Mode: draw a <b>zone</b> (a 3D camouflage prop — click-drag a footprint, then set its color/height first), or place a <b>hider spawn</b> / <b>seeker spawn</b> point (single click), or set the movement <b>bounds</b> (click-drag).</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
       <label style="display:inline;width:auto"><input type="radio" name="edit-mode" value="zone" checked style="width:auto"> Zone</label>
       <label style="display:inline;width:auto"><input type="radio" name="edit-mode" value="hider" style="width:auto"> Hider spawn</label>
       <label style="display:inline;width:auto"><input type="radio" name="edit-mode" value="seeker" style="width:auto"> Seeker spawn</label>
       <label style="display:inline;width:auto"><input type="radio" name="edit-mode" value="bounds" style="width:auto"> Bounds</label>
+      <span>Next zone color: <input type="color" id="zone-next-color" value="#8a5a2b" style="width:40px;height:32px;padding:0;"></span>
+      <span>Next zone height: <input type="number" id="zone-next-height" value="90" style="width:70px;"></span>
       <button type="button" class="btn secondary" id="btn-undo-zone">Undo last</button>
       <button type="button" class="btn secondary" id="btn-clear-zones">Clear all</button>
     </div>
     <canvas id="zone-canvas" class="zone-editor-canvas" width="<?= (int) ($editing['width'] ?? 960) ?>" height="<?= (int) ($editing['height'] ?? 540) ?>"></canvas>
 
     <label>Raw config JSON (auto-updated by the editor above; you can also hand-edit)</label>
-    <textarea name="config_json" id="config-json" rows="6"><?= htmlspecialchars($editing['config_json'] ?? '{"procedural":"warehouse","bounds":{"x":30,"y":260,"w":900,"h":250},"zones":[],"hiderSpawns":[],"seekerSpawns":[]}') ?></textarea>
+    <textarea name="config_json" id="config-json" rows="6"><?= htmlspecialchars($editing['config_json'] ?? '{"wallHeight":220,"floorColor":"#8a8f78","wallColor":"#5b5f66","bounds":{"x":30,"y":260,"w":900,"h":250},"zones":[],"hiderSpawns":[],"seekerSpawns":[]}') ?></textarea>
 
     <p><button type="submit" class="btn">Save Stage</button> <a href="stages.php" class="btn secondary">Cancel</a></p>
   </form>
@@ -157,6 +175,11 @@ require __DIR__ . '/includes/header.php';
   var ctx = canvas.getContext('2d');
   var jsonField = document.getElementById('config-json');
   var bgFile = document.getElementById('bg-file');
+  var wallHeightInput = document.getElementById('room-wall-height');
+  var floorColorInput = document.getElementById('room-floor-color');
+  var wallColorInput = document.getElementById('room-wall-color');
+  var nextZoneColorInput = document.getElementById('zone-next-color');
+  var nextZoneHeightInput = document.getElementById('zone-next-height');
   var bgImg = null;
   <?php if (!empty($editing['background_image'])): ?>
   bgImg = new Image();
@@ -170,23 +193,34 @@ require __DIR__ . '/includes/header.php';
   config.hiderSpawns = config.hiderSpawns || [];
   config.seekerSpawns = config.seekerSpawns || [];
   config.bounds = config.bounds || { x: 30, y: 30, w: canvas.width - 60, h: canvas.height - 60 };
+  config.wallHeight = config.wallHeight || 220;
+  config.floorColor = config.floorColor || '#8a8f78';
+  config.wallColor = config.wallColor || '#5b5f66';
+
+  // Reflect the loaded config_json into the plain room-appearance inputs
+  // (this editor is just a 2D top-down BLUEPRINT of the real 3D room built
+  // by scene3d.js — colors/heights set here become actual box heights and
+  // material colors in the game).
+  wallHeightInput.value = config.wallHeight;
+  floorColorInput.value = config.floorColor;
+  wallColorInput.value = config.wallColor;
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (bgImg) ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-    else { ctx.fillStyle = '#444'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    else { ctx.fillStyle = config.floorColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 
     ctx.strokeStyle = '#3ad'; ctx.lineWidth = 2;
     var b = config.bounds;
     if (b) ctx.strokeRect(b.x, b.y, b.w, b.h);
 
-    ctx.fillStyle = 'rgba(255,93,58,0.35)'; ctx.strokeStyle = '#ff5d3a';
+    ctx.strokeStyle = '#ff5d3a';
     config.zones.forEach(function (z) {
+      ctx.fillStyle = (z.color || '#8a5a2b') + 'aa';
       ctx.fillRect(z.x, z.y, z.w, z.h);
       ctx.strokeRect(z.x, z.y, z.w, z.h);
       ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif';
-      ctx.fillText(z.label || '', z.x + 4, z.y + 14);
-      ctx.fillStyle = 'rgba(255,93,58,0.35)';
+      ctx.fillText((z.label || '') + ' (h' + (z.height || 0) + ')', z.x + 4, z.y + 14);
     });
     ctx.fillStyle = '#2ecC71';
     config.hiderSpawns.forEach(function (p) { ctx.beginPath(); ctx.arc(p[0], p[1], 6, 0, Math.PI * 2); ctx.fill(); });
@@ -195,6 +229,10 @@ require __DIR__ . '/includes/header.php';
 
     jsonField.value = JSON.stringify(config, null, 2);
   }
+
+  wallHeightInput.addEventListener('input', function () { config.wallHeight = parseInt(wallHeightInput.value, 10) || 220; draw(); });
+  floorColorInput.addEventListener('input', function () { config.floorColor = floorColorInput.value; draw(); });
+  wallColorInput.addEventListener('input', function () { config.wallColor = wallColorInput.value; draw(); });
 
   bgFile.addEventListener('change', function () {
     var f = bgFile.files[0];
@@ -228,7 +266,12 @@ require __DIR__ . '/includes/header.php';
     else if (mode === 'bounds') config.bounds = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) };
     else if (w > 4 && h > 4) {
       var label = prompt('Zone label (e.g. "Wooden Crate")', 'Zone') || 'Zone';
-      config.zones.push({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h), label: label });
+      config.zones.push({
+        x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h),
+        height: parseInt(nextZoneHeightInput.value, 10) || 90,
+        color: nextZoneColorInput.value,
+        label: label
+      });
     }
     dragStart = null;
     draw();
