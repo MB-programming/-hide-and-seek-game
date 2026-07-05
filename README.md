@@ -69,9 +69,12 @@ folder needs to go on the server.
    tab, choose `sql/schema.sql` from this repo, and run the import. This creates all
    tables and seeds: a default admin login, the 4 starter stages, default gameplay
    settings, and empty sound/log tables.
-4. **Configure the admin panel's DB connection.** Edit
-   `public_html/admin/config.php` and fill in `DB_HOST`, `DB_NAME`, `DB_USER`,
-   `DB_PASS` with the values from step 2.
+4. **Configure the admin panel's DB connection.** Copy
+   `public_html/admin/config.sample.php` to `public_html/admin/config.php` and
+   fill in `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS` with the values from step
+   2. `config.php` is gitignored on purpose (real DB credentials shouldn't sit
+   in version control) — upload it to your host manually alongside everything
+   else.
 5. **Log in.** Visit `https://yourdomain.com/admin/login.php`.
    - Default login: **admin / zizo-admin-2026**
    - **Change this immediately** — easiest way: generate a new hash locally

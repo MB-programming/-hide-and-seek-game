@@ -1,0 +1,3 @@
+# Real DB credentials — never commit these. Copy config.sample.php to
+# config.php and fill in your actual Hostinger MySQL credentials locally.
+public_html/admin/config.php
