@@ -119,19 +119,54 @@
     canvas.addEventListener('pointerleave', end);
   }
 
-  // ---- Stage tap/click (seeker catch attempts, eyedropper sampling) ------
-  // onPick(ndcX, ndcY) is called on every click/tap on the stage canvas, with
-  // coordinates already converted to Three.js "normalized device" space
-  // (-1..1 on each axis, origin at canvas center, +Y up) — exactly what
-  // THREE.Raycaster.setFromCamera() expects, since the 3D scene is picked by
-  // raycasting rather than 2D pixel math.
-  function bindStagePick(canvas, onPick) {
+  // ---- Stage pointer handling: tap-to-pick vs drag-to-look-around --------
+  // A single pointerdown/move/up sequence on the stage canvas serves two
+  // different purposes, disambiguated by how far the pointer moved before
+  // release:
+  //   - barely moved  -> a "tap" -> onPick(ndcX, ndcY) (seeker catch
+  //     attempts, eyedropper sampling), coordinates already converted to
+  //     Three.js "normalized device" space (-1..1, +Y up) for
+  //     THREE.Raycaster.setFromCamera().
+  //   - moved past DRAG_THRESHOLD px -> a "drag" -> onDrag(dxPixels,
+  //     dyPixels) fires continuously as the pointer moves, driving the
+  //     look-around camera orbit in game-main.js. onDrag is optional.
+  var DRAG_THRESHOLD = 8;
+
+  function bindStagePick(canvas, onPick, onDrag) {
+    var down = null; // { x, y, pointerId }
+    var dragging = false;
+    var last = null;
+
     canvas.addEventListener('pointerdown', function (e) {
-      var rect = canvas.getBoundingClientRect();
-      var ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      var ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
-      onPick(ndcX, ndcY, e);
+      down = { x: e.clientX, y: e.clientY, pointerId: e.pointerId };
+      last = { x: e.clientX, y: e.clientY };
+      dragging = false;
+      canvas.setPointerCapture(e.pointerId);
     });
+
+    canvas.addEventListener('pointermove', function (e) {
+      if (!down || e.pointerId !== down.pointerId) return;
+      var totalDx = e.clientX - down.x, totalDy = e.clientY - down.y;
+      if (!dragging && Math.sqrt(totalDx * totalDx + totalDy * totalDy) > DRAG_THRESHOLD) dragging = true;
+      if (dragging && onDrag) {
+        onDrag(e.clientX - last.x, e.clientY - last.y);
+      }
+      last = { x: e.clientX, y: e.clientY };
+    });
+
+    function end(e) {
+      if (!down || e.pointerId !== down.pointerId) return;
+      if (!dragging) {
+        var rect = canvas.getBoundingClientRect();
+        var ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        var ndcY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+        onPick(ndcX, ndcY, e);
+      }
+      down = null;
+      dragging = false;
+    }
+    canvas.addEventListener('pointerup', end);
+    canvas.addEventListener('pointercancel', end);
   }
 
   global.ZizoInput = {

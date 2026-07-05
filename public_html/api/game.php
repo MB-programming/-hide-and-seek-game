@@ -196,7 +196,11 @@ function action_create_room($pdo, $in) {
     $seekerCount = clampInt($in['seekerCount'] ?? 1, 1, 5, 1);
     $paintDuration = clampInt($in['paintDuration'] ?? 60, 10, 600, 60);
     $roundDuration = clampInt($in['roundDuration'] ?? 180, 30, 1800, 180);
-    $repaintLimit = clampInt($in['repaintLimit'] ?? 2, 0, 10, 2);
+    // Capped at 250 (not a true "unlimited" flag) so the value still fits
+    // the room_players.repaints_used TINYINT UNSIGNED column without a DB
+    // migration — 250 repaints in one round is effectively unlimited for
+    // any realistic match length anyway.
+    $repaintLimit = clampInt($in['repaintLimit'] ?? 2, 0, 250, 2);
     $wrongCatchPenaltySec = clampInt($in['wrongCatchPenaltySec'] ?? 3, 1, 30, 3);
     $name = mb_substr(trim((string) ($in['name'] ?? ($code . "'s room"))), 0, 60);
     $mapSlug = mb_substr(trim((string) ($in['mapSlug'] ?? '')), 0, 50);
@@ -261,7 +265,7 @@ function action_update_settings($pdo, $in) {
     $seekerCount = clampInt($in['seekerCount'] ?? $room['seeker_count'], 1, 5, $room['seeker_count']);
     $paintDuration = clampInt($in['paintDuration'] ?? $room['paint_duration'], 10, 600, $room['paint_duration']);
     $roundDuration = clampInt($in['roundDuration'] ?? $room['round_duration'], 30, 1800, $room['round_duration']);
-    $repaintLimit = clampInt($in['repaintLimit'] ?? $room['repaint_limit'], 0, 10, $room['repaint_limit']);
+    $repaintLimit = clampInt($in['repaintLimit'] ?? $room['repaint_limit'], 0, 250, $room['repaint_limit']);
 
     $pdo->prepare('UPDATE rooms SET map_slug=?, seeker_count=?, paint_duration=?, round_duration=?, repaint_limit=? WHERE code=?')
         ->execute([$mapSlug, $seekerCount, $paintDuration, $roundDuration, $repaintLimit, $in['code']]);

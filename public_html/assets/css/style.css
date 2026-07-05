@@ -165,6 +165,11 @@ input, select { font: inherit; }
   position: absolute; bottom: 20px; right: 20px; z-index: 15; border-radius: 999px;
 }
 
+.jump-btn {
+  position: absolute; bottom: 100px; right: 20px; z-index: 15; border-radius: 999px;
+  width: 56px; height: 56px; padding: 0; font-size: 1.4rem;
+}
+
 /* Painting toolbar */
 .toolbar {
   background: var(--bg-alt); padding: 10px; display: flex; align-items: center; gap: 10px;
@@ -190,6 +195,7 @@ input, select { font: inherit; }
 }
 [dir="rtl"] .joystick-base { left: auto; right: 20px; }
 [dir="rtl"] .reposition-btn { right: auto; left: 20px; }
+[dir="rtl"] .jump-btn { right: auto; left: 20px; }
 
 /* Small phones */
 @media (max-width: 380px) {

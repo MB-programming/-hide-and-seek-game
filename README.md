@@ -213,10 +213,16 @@ requirements. If you need to tune it further:
   admin panel for a more polished/realistic look. Walls and zone props are always
   simple lit boxes, not photorealistic 3D models — a full licensed 3D art pipeline is
   out of scope for this project.
-- The camera is a fixed-offset third-person "chase" camera (no manual orbit/mouse
-  look) — kept deliberately simple so it never conflicts with the paint/joystick
-  touch handling. Seekers get a further-back, higher angle than Hiders for a wider
-  search view.
+- The camera is a third-person "chase" camera that follows behind the local player;
+  drag anywhere on the stage (mouse or touch) to orbit it and look around — a small
+  drag-distance threshold (`DRAG_THRESHOLD` in `assets/js/input.js`) disambiguates a
+  look-around drag from a tap (catch attempt/eyedropper), so the two never conflict.
+  It's a simple yaw-only orbit, not full 6DOF free-look. Seekers get a further-back,
+  higher angle than Hiders for a wider search view.
+- **Jump** (Spacebar on desktop, the on-screen button on touch) is a purely local
+  visual hop — it is *not* synced to other clients, to avoid adding another polled
+  field for every player on every tick (see the load-tuning notes above). Other
+  players won't see you mid-air.
 - WebGL (required for the 3D scene) is broadly supported on phones from roughly the
   last 8+ years, but a truly ancient or very low-end device could still struggle more
   with a lit 3D scene than it would with a flat 2D canvas.

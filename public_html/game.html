@@ -48,8 +48,8 @@
         <input id="lobby-paint-duration" type="number" min="10" max="600">
         <label data-i18n="round_time">Round Time (sec)</label>
         <input id="lobby-round-duration" type="number" min="30" max="1800">
-        <label data-i18n="repaint_limit">Repaint Limit</label>
-        <input id="lobby-repaint-limit" type="number" min="0" max="10">
+        <label data-i18n="repaint_limit">Repaint Limit (250 = effectively unlimited)</label>
+        <input id="lobby-repaint-limit" type="number" min="0" max="250">
       </div>
 
       <div class="lobby-actions">
@@ -86,6 +86,10 @@
 
     <!-- Seeker: reposition/repaint button (also usable to open pose menu) -->
     <button id="btn-reposition" class="btn btn-secondary reposition-btn hidden"></button>
+
+    <!-- Jump (touch only — desktop uses Spacebar). Purely a local visual
+         hop, not synced over the network — see game-main.js triggerJump(). -->
+    <button id="btn-jump" class="btn btn-secondary jump-btn hidden">⬆</button>
   </main>
 
   <!-- Painting toolbar: visible to a Hider during 'painting' phase or an active repaint window -->

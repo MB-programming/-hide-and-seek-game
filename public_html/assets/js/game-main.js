@@ -20,6 +20,8 @@
   var MOVE_SPEED = 160; // world units/sec (same numeric scale as the old 2D version)
   var CAMERA_UP = { hider: 190, seeker: 260 };
   var CAMERA_BACK = { hider: 220, seeker: 320 };
+  var CAMERA_ROTATE_SPEED = 0.008; // radians per pixel of horizontal drag
+  var cameraYaw = 0; // look-around angle, added on top of the default "behind" direction
 
   var room = new ZizoRoom.Room();
   var config = null;
@@ -88,6 +90,7 @@
     wireHud();
     wirePaintToolbar();
     setupJoystickIfTouch();
+    bindJumpControls();
     bindStageClicks();
 
     room.on('meta', onMeta);
@@ -413,6 +416,11 @@
       var hits = raycaster.intersectObjects(targetMeshes);
       var targetId = hits.length ? hits[0].object.userData.playerId : null;
       ZizoSeeker.resolveCatchAttempt(room, targetId, room.meta.wrongCatchPenaltySec);
+    }, function (dxPixels) {
+      // Drag-to-look-around: horizontal drag orbits the camera around the
+      // local player (see updateCamera) instead of the old fixed-behind
+      // angle. Purely a local view preference — never sent to the server.
+      cameraYaw -= dxPixels * CAMERA_ROTATE_SPEED;
     });
   }
 
@@ -422,6 +430,49 @@
     if (!('ontouchstart' in window)) return;
     $('#joystick-base').classList.remove('hidden');
     joystick = new ZizoInput.VirtualJoystick($('#joystick-base'), $('#joystick-knob'));
+    $('#btn-jump').classList.remove('hidden');
+  }
+
+  // ---- jump ---------------------------------------------------------
+  // A purely local visual hop (the local player's 3D group bounces up and
+  // back down) — deliberately NOT synced to the server/other clients, to
+  // keep this a free bit of movement flair without adding another polled
+  // field for every player on every tick (see room.js's load-tuning notes).
+
+  var JUMP_HEIGHT = 45;
+  var JUMP_DURATION_MS = 450;
+  var jumping = false;
+  var jumpStartedAt = 0;
+
+  function bindJumpControls() {
+    window.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        triggerJump();
+      }
+    });
+    $('#btn-jump').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      triggerJump();
+    });
+  }
+
+  function triggerJump() {
+    if (jumping || !canMove()) return;
+    jumping = true;
+    jumpStartedAt = performance.now();
+  }
+
+  function updateJump() {
+    var mine = playerEntities[room.uid];
+    if (!mine || !jumping) return;
+    var t = (performance.now() - jumpStartedAt) / JUMP_DURATION_MS;
+    if (t >= 1) {
+      jumping = false;
+      mine.group.position.y = 0;
+      return;
+    }
+    mine.group.position.y = JUMP_HEIGHT * Math.sin(Math.PI * t);
   }
 
   // ---- movement + render loop -------------------------------------------
@@ -506,7 +557,12 @@
     var targetX = mine ? mine.group.position.x : stage.width / 2;
     var targetZ = mine ? mine.group.position.z : stage.height / 2;
 
-    camera.position.set(targetX, up, targetZ + back);
+    // cameraYaw=0 reproduces the old fixed "directly behind" angle exactly;
+    // dragging on the stage canvas (see bindStageClicks's onDrag) rotates
+    // around the player from there — a simple orbit, not full 6DOF free-look.
+    var offsetX = Math.sin(cameraYaw) * back;
+    var offsetZ = Math.cos(cameraYaw) * back;
+    camera.position.set(targetX + offsetX, up, targetZ + offsetZ);
     camera.lookAt(targetX, ZizoPlayer.BODY_H * 0.6, targetZ);
   }
 
@@ -522,6 +578,7 @@
     lastFrameTime = t;
 
     updateMovement(dt);
+    updateJump();
     checkRepaintWindowExpiry();
     updateTimerHud();
     render();
