@@ -1,0 +1,15 @@
+# Uploaded stage background images live here. Defense in depth: even
+# though admin/stages.php validates uploads with getimagesize() and a strict
+# extension whitelist, never allow anything in this folder to execute as PHP.
+<IfModule mod_php.c>
+  php_flag engine off
+</IfModule>
+<FilesMatch "\.(php|php\d|phtml|phar)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

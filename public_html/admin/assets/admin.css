@@ -1,0 +1,44 @@
+/* ZIZO HIDE admin panel — minimal, clean, no external dependencies. */
+:root {
+  --bg: #f4f5f7; --card: #ffffff; --text: #1c1f26; --muted: #6b7280;
+  --accent: #ff5d3a; --border: #e4e6eb;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+}
+.admin-header {
+  background: #1c1f26; color: #fff; padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+}
+.admin-header a { color: #fff; text-decoration: none; }
+.admin-header .brand { font-weight: 700; font-size: 1.1rem; }
+.admin-header .brand span { color: var(--accent); }
+.admin-nav { display: flex; gap: 14px; flex-wrap: wrap; }
+.admin-nav a { padding: 6px 10px; border-radius: 8px; font-size: 0.9rem; }
+.admin-nav a.active, .admin-nav a:hover { background: rgba(255,255,255,0.12); }
+.admin-wrap { max-width: 960px; margin: 24px auto; padding: 0 16px 60px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+h1, h2 { margin-top: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+label { display: block; font-size: 0.85rem; color: var(--muted); margin: 10px 0 4px; }
+input[type=text], input[type=password], input[type=number], select, textarea {
+  width: 100%; padding: 9px; border-radius: 8px; border: 1px solid var(--border); font: inherit;
+}
+textarea { font-family: monospace; font-size: 0.85rem; }
+.btn {
+  display: inline-block; border: none; border-radius: 8px; padding: 9px 16px;
+  background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; font-size: 0.95rem;
+}
+.btn.secondary { background: #e4e6eb; color: var(--text); }
+.btn.danger { background: #d9483f; }
+.flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+.flash.ok { background: #d9f4e6; color: #0a6b3d; }
+.flash.err { background: #fbe0de; color: #8a1f16; }
+.muted { color: var(--muted); font-size: 0.85rem; }
+.login-wrap { max-width: 360px; margin: 80px auto; }
+.zone-editor-canvas { border: 1px solid var(--border); max-width: 100%; cursor: crosshair; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; background: #eef; }

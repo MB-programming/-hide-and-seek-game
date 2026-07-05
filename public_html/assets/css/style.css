@@ -1,0 +1,199 @@
+/* ZIZO HIDE — shared stylesheet (menus + in-game HUD).
+   Mobile-first, RTL-aware (uses logical properties where practical),
+   no external fonts/icons — keeps page weight tiny for weak connections. */
+
+:root {
+  --bg: #12151a;
+  --bg-alt: #1b1f27;
+  --card: #20242e;
+  --text: #eef1f5;
+  --muted: #9aa3b2;
+  --accent: #ff5d3a;
+  --accent-2: #2b6fe0;
+  --good: #33c17a;
+  --bad: #e0473f;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Tahoma, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+.hidden, .force-hidden { display: none !important; }
+button { font: inherit; }
+input, select { font: inherit; }
+
+.muted { color: var(--muted); font-size: 0.9rem; }
+
+.btn {
+  border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+  background: var(--bg-alt); color: var(--text); font-weight: 600;
+}
+.btn-primary { background: var(--accent); color: #1a0d08; }
+.btn-secondary { background: var(--accent-2); color: #fff; }
+.btn-ghost { background: transparent; border: 1px solid rgba(255,255,255,0.18); }
+.btn-big { width: 100%; padding: 16px; font-size: 1.05rem; margin: 6px 0; }
+.btn-small { padding: 6px 10px; font-size: 0.85rem; }
+.btn:active { transform: scale(0.98); }
+
+/* ---------------- Landing / menu screen ---------------- */
+.menu-wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+.menu-header { text-align: center; margin-bottom: 18px; position: relative; }
+.brand { font-size: 2rem; margin: 6px 0 0; letter-spacing: 1px; }
+.brand span { color: var(--accent); }
+.tagline { color: var(--muted); margin: 4px 0 12px; }
+
+.card {
+  background: var(--card); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px;
+}
+.card label { display: block; font-size: 0.85rem; color: var(--muted); margin: 8px 0 4px; }
+.card input[type="text"], .card input[type="number"], .card select {
+  width: 100%; padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg-alt); color: var(--text);
+}
+.card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.code-input { text-transform: uppercase; letter-spacing: 2px; }
+
+.room-list { list-style: none; margin: 10px 0 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.room-list li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; background: var(--bg-alt); border-radius: 10px; margin-bottom: 8px;
+  cursor: pointer;
+}
+.room-list li:active { background: #262b36; }
+.room-list .room-name { font-weight: 600; }
+.room-list .room-meta { color: var(--muted); font-size: 0.8rem; }
+
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+}
+.modal-box {
+  background: var(--card); border-radius: 18px 18px 0 0; padding: 20px; width: 100%; max-width: 480px;
+}
+@media (min-width: 540px) {
+  .modal { align-items: center; }
+  .modal-box { border-radius: var(--radius); }
+}
+.modal-box label { display: block; font-size: 0.85rem; color: var(--muted); margin: 10px 0 4px; }
+.modal-box input, .modal-box select {
+  width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg-alt); color: var(--text);
+}
+.modal-actions { margin-top: 16px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--bg-alt); border: 1px solid rgba(255,255,255,0.15);
+  padding: 10px 16px; border-radius: 10px; z-index: 80; max-width: 90vw;
+}
+
+/* ---------------- Game screen ---------------- */
+.game-body { overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+.hud {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; background: var(--bg-alt); z-index: 20; gap: 8px;
+}
+.hud-left, .hud-right { display: flex; align-items: center; gap: 6px; }
+.hud-center { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.pill {
+  background: var(--card); padding: 4px 10px; border-radius: 999px; font-size: 0.8rem;
+}
+.role-badge.role-hider { color: var(--good); }
+.role-badge.role-seeker { color: var(--accent-2); }
+.phase-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.timer { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+#stage-wrap {
+  position: relative; flex: 1; display: flex; align-items: center; justify-content: center;
+  background: #000; min-height: 0;
+}
+#stage-canvas { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; touch-action: none; }
+
+.catch-flash {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(circle, rgba(255,80,80,0.35), transparent 70%);
+  animation: flash 0.4s ease-out;
+}
+@keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+
+.overlay {
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(10,12,16,0.88);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px; text-align: center; overflow-y: auto;
+}
+.big-count { font-size: 5rem; font-weight: 800; color: var(--accent); }
+
+.player-list { list-style: none; margin: 10px 0; padding: 0; width: 100%; max-width: 360px; }
+.player-list li {
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--card); padding: 8px 12px; border-radius: 10px; margin-bottom: 6px;
+}
+.player-list .ready-badge { color: var(--good); font-size: 0.8rem; }
+.player-list .role-tag { font-size: 0.75rem; color: var(--muted); }
+
+.lobby-code { margin-bottom: 8px; color: var(--muted); }
+.host-settings { width: 100%; max-width: 360px; text-align: left; }
+.host-settings label { display: block; font-size: 0.8rem; color: var(--muted); margin: 6px 0 2px; }
+.host-settings select, .host-settings input {
+  width: 100%; padding: 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+  background: var(--bg-alt); color: var(--text);
+}
+.lobby-actions { width: 100%; max-width: 360px; margin-top: 10px; }
+
+/* Touch joystick */
+.joystick-base {
+  position: absolute; bottom: 20px; left: 20px; width: 100px; height: 100px;
+  border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.25);
+  z-index: 15; touch-action: none;
+}
+.joystick-knob {
+  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  border-radius: 50%; background: rgba(255,255,255,0.55);
+  transition: transform 0.05s linear;
+}
+
+.reposition-btn {
+  position: absolute; bottom: 20px; right: 20px; z-index: 15; border-radius: 999px;
+}
+
+/* Painting toolbar */
+.toolbar {
+  background: var(--bg-alt); padding: 10px; display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; z-index: 20;
+}
+.paint-canvas {
+  width: 72px; height: 96px; background: #333;
+  border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; touch-action: none;
+  image-rendering: pixelated;
+}
+.toolbar-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tool-btn { padding: 8px 10px; font-size: 1rem; }
+#brush-color { width: 40px; height: 40px; border: none; border-radius: 8px; padding: 0; background: none; }
+#brush-size { width: 100px; }
+.pose-buttons { display: flex; gap: 6px; }
+.pose-btn { font-size: 1.3rem; padding: 6px 10px; }
+.pose-btn.active { background: var(--accent); }
+.tool-btn.active { background: var(--accent); border-color: var(--accent); }
+
+/* RTL adjustments */
+[dir="rtl"] .card-row, [dir="rtl"] .hud, [dir="rtl"] .toolbar-controls, [dir="rtl"] .pose-buttons {
+  direction: rtl;
+}
+[dir="rtl"] .joystick-base { left: auto; right: 20px; }
+[dir="rtl"] .reposition-btn { right: auto; left: 20px; }
+
+/* Small phones */
+@media (max-width: 380px) {
+  .brand { font-size: 1.6rem; }
+  .toolbar { gap: 6px; }
+  #brush-size { width: 70px; }
+}

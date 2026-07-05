@@ -1,0 +1,64 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "publicRooms": {
+      ".read": true,
+      ".indexOn": ["createdAt", "phase"],
+      "$roomId": {
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['code','isPublic','name','mapSlug','playerCount','maxPlayers','phase','createdAt'])",
+        "playerCount": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 40" }
+      }
+    },
+
+    "rooms": {
+      "$roomId": {
+
+        "meta": {
+          ".read": "auth != null",
+          "hostId": { ".validate": "newData.isString()" },
+          "code": { ".validate": "newData.isString() && newData.val().length <= 20" },
+          "mapSlug": { ".validate": "newData.isString() && newData.val().length <= 50" },
+          "maxPlayers": { ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 10" },
+          "seekerCount": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
+          "paintDuration": { ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 600" },
+          "roundDuration": { ".validate": "newData.isNumber() && newData.val() >= 30 && newData.val() <= 1800" },
+          "repaintLimit": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+          "phase": { ".validate": "newData.isString()" },
+          ".write": "auth != null && (!data.exists() || data.child('hostId').val() === auth.uid || newData.child('hostId').val() === auth.uid)"
+        },
+
+        "players": {
+          ".read": "auth != null",
+          "$playerId": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['nickname','role'])",
+            "nickname": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "role": { ".validate": "newData.val() === 'lobby' || newData.val() === 'hider' || newData.val() === 'seeker' || newData.val() === 'spectator'" },
+            "pose": { ".validate": "newData.val() === 'stand' || newData.val() === 'crouch' || newData.val() === 'lean'" },
+            "x": { ".validate": "newData.isNumber()" },
+            "y": { ".validate": "newData.isNumber()" },
+            "alive": { ".validate": "newData.isBoolean()" },
+            "paint": {
+              "data": {
+                ".validate": "newData.isString() && newData.val().length <= 40000"
+              }
+            }
+          }
+        },
+
+        "events": {
+          ".read": "auth != null",
+          ".indexOn": ["ts"],
+          "$eventId": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['type','ts'])"
+          }
+        }
+      }
+    }
+  }
+}

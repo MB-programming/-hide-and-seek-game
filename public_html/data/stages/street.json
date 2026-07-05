@@ -1,0 +1,18 @@
+{
+  "slug": "street",
+  "name": "Street",
+  "width": 960,
+  "height": 540,
+  "backgroundImage": null,
+  "procedural": "street",
+  "bounds": { "x": 30, "y": 260, "w": 900, "h": 250 },
+  "zones": [
+    { "x": 60, "y": 300, "w": 100, "h": 130, "label": "Brick Wall Mural" },
+    { "x": 230, "y": 340, "w": 120, "h": 70, "label": "Trash Bin Row" },
+    { "x": 420, "y": 290, "w": 90, "h": 130, "label": "Street Lamp Post" },
+    { "x": 580, "y": 320, "w": 140, "h": 70, "label": "Bus Stop Bench" },
+    { "x": 770, "y": 300, "w": 110, "h": 100, "label": "Newspaper Stand" }
+  ],
+  "hiderSpawns": [[80, 470], [260, 470], [440, 470], [620, 470], [800, 470]],
+  "seekerSpawns": [[480, 480]]
+}

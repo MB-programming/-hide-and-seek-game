@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ZIZO HIDE</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="game-body">
+<div id="app">
+
+  <header id="hud" class="hud">
+    <div class="hud-left">
+      <span id="hud-room-code" class="pill"></span>
+      <span id="hud-role-badge" class="pill role-badge"></span>
+    </div>
+    <div class="hud-center">
+      <span id="hud-phase-label" class="phase-label"></span>
+      <span id="hud-timer" class="timer">00:00</span>
+    </div>
+    <div class="hud-right">
+      <button id="btn-spectate-toggle" class="btn btn-ghost btn-small" data-i18n="spectate">Spectate</button>
+      <button id="btn-leave" class="btn btn-ghost btn-small" data-i18n="leave">Leave</button>
+    </div>
+  </header>
+
+  <main id="stage-wrap">
+    <canvas id="stage-canvas" width="960" height="540"></canvas>
+
+    <div id="catch-flash" class="catch-flash hidden"></div>
+
+    <!-- Lobby overlay -->
+    <section id="overlay-lobby" class="overlay">
+      <h2 data-i18n="lobby">Lobby</h2>
+      <div class="lobby-code">Code: <b id="lobby-room-code-display">------</b></div>
+
+      <ul id="lobby-player-list" class="player-list"></ul>
+
+      <div id="lobby-host-settings" class="host-settings hidden">
+        <label data-i18n="map">Map</label>
+        <select id="lobby-map-select"></select>
+        <label data-i18n="seekers">Seekers</label>
+        <input id="lobby-seekers" type="number" min="1" max="5">
+        <label data-i18n="paint_time">Painting Time (sec)</label>
+        <input id="lobby-paint-duration" type="number" min="10" max="600">
+        <label data-i18n="round_time">Round Time (sec)</label>
+        <input id="lobby-round-duration" type="number" min="30" max="1800">
+        <label data-i18n="repaint_limit">Repaint Limit</label>
+        <input id="lobby-repaint-limit" type="number" min="0" max="10">
+      </div>
+
+      <div class="lobby-actions">
+        <button id="btn-ready" class="btn btn-secondary btn-big" data-i18n="ready">Ready</button>
+        <button id="btn-start-round" class="btn btn-primary btn-big hidden" data-i18n="start_round">Start Round</button>
+      </div>
+      <p id="lobby-waiting-msg" class="muted" data-i18n="waiting_for_host">Waiting for host to start...</p>
+    </section>
+
+    <!-- Starting countdown overlay -->
+    <section id="overlay-starting" class="overlay hidden">
+      <div id="starting-count" class="big-count">3</div>
+      <p id="starting-role-label"></p>
+    </section>
+
+    <!-- Seeker waiting overlay during painting phase -->
+    <section id="overlay-seeker-waiting" class="overlay hidden">
+      <h2>👀</h2>
+      <p id="seeker-wait-label"></p>
+      <div id="seeker-wait-timer" class="timer"></div>
+    </section>
+
+    <!-- Results overlay -->
+    <section id="overlay-results" class="overlay hidden">
+      <h2 id="results-title"></h2>
+      <ul id="results-list" class="player-list"></ul>
+      <button id="btn-play-again" class="btn btn-primary btn-big"></button>
+    </section>
+
+    <!-- Touch joystick -->
+    <div id="joystick-base" class="joystick-base hidden">
+      <div id="joystick-knob" class="joystick-knob"></div>
+    </div>
+
+    <!-- Seeker: reposition/repaint button (also usable to open pose menu) -->
+    <button id="btn-reposition" class="btn btn-secondary reposition-btn hidden"></button>
+  </main>
+
+  <!-- Painting toolbar: visible to a Hider during 'painting' phase or an active repaint window -->
+  <div id="paint-toolbar" class="toolbar hidden">
+    <canvas id="paint-canvas" class="paint-canvas" width="48" height="64"></canvas>
+    <div class="toolbar-controls">
+      <input type="color" id="brush-color" value="#ffffff" title="Color">
+      <button id="btn-eyedropper" class="btn btn-ghost tool-btn" title="Eyedropper">💧</button>
+      <input type="range" id="brush-size" min="2" max="20" value="6" title="Brush size">
+      <button id="btn-undo" class="btn btn-ghost tool-btn" title="Undo">↶</button>
+      <button id="btn-redo" class="btn btn-ghost tool-btn" title="Redo">↷</button>
+      <button id="btn-clear" class="btn btn-ghost tool-btn" title="Clear">✕</button>
+    </div>
+    <div class="pose-buttons">
+      <button class="btn btn-ghost pose-btn active" data-pose="stand">🧍</button>
+      <button class="btn btn-ghost pose-btn" data-pose="crouch">🧎</button>
+      <button class="btn btn-ghost pose-btn" data-pose="lean">🚶</button>
+    </div>
+    <button id="btn-confirm-paint" class="btn btn-primary btn-big">✓</button>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/firebase-init.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/lang.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/audio.js"></script>
+<script src="assets/js/stages.js"></script>
+<script src="assets/js/paint.js"></script>
+<script src="assets/js/player.js"></script>
+<script src="assets/js/input.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/lobby.js"></script>
+<script src="assets/js/seeker.js"></script>
+<script src="assets/js/spectator.js"></script>
+<script src="assets/js/game-main.js"></script>
+</body>
+</html>

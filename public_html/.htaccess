@@ -1,0 +1,2 @@
+# Basic hardening for shared hosting — disable directory listing.
+Options -Indexes

@@ -1,0 +1,18 @@
+{
+  "slug": "classroom",
+  "name": "Classroom",
+  "width": 960,
+  "height": 540,
+  "backgroundImage": null,
+  "procedural": "classroom",
+  "bounds": { "x": 30, "y": 260, "w": 900, "h": 250 },
+  "zones": [
+    { "x": 70, "y": 300, "w": 100, "h": 130, "label": "Bookshelf" },
+    { "x": 230, "y": 340, "w": 150, "h": 70, "label": "Student Desk Row" },
+    { "x": 430, "y": 280, "w": 100, "h": 60, "label": "Green Chalkboard" },
+    { "x": 590, "y": 330, "w": 130, "h": 80, "label": "Storage Cabinet" },
+    { "x": 780, "y": 310, "w": 100, "h": 100, "label": "Window Curtain" }
+  ],
+  "hiderSpawns": [[100, 470], [280, 470], [460, 470], [640, 470], [820, 470]],
+  "seekerSpawns": [[480, 480]]
+}

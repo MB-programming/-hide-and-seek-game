@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ZIZO HIDE</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<div class="menu-wrap">
+  <header class="menu-header">
+    <h1 class="brand">ZIZO <span>HIDE</span></h1>
+    <p class="tagline" data-i18n="tagline">Paint. Blend in. Survive.</p>
+    <button id="btn-lang" class="btn btn-ghost btn-small" data-i18n="language">العربية</button>
+  </header>
+
+  <section class="card">
+    <label for="nickname" data-i18n="nickname_label">Nickname</label>
+    <input id="nickname" type="text" maxlength="20" data-i18n-placeholder="nickname_placeholder" placeholder="Enter your nickname">
+  </section>
+
+  <section class="card">
+    <div class="card-row">
+      <h2 data-i18n="public_rooms">Public Rooms</h2>
+      <button id="btn-refresh-rooms" class="btn btn-ghost btn-small" data-i18n="refresh">Refresh</button>
+    </div>
+    <ul id="room-list" class="room-list"></ul>
+    <p id="room-list-empty" class="muted hidden" data-i18n="no_rooms">No open public rooms right now — create one!</p>
+  </section>
+
+  <section class="card">
+    <button id="btn-create-public" class="btn btn-primary btn-big" data-i18n="create_public">Create Public Room</button>
+    <button id="btn-create-private" class="btn btn-secondary btn-big" data-i18n="create_private">Create Private Room</button>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="join_code">Join by Code</h2>
+    <div class="card-row">
+      <input id="join-code-input" type="text" maxlength="8" data-i18n-placeholder="join_code_placeholder" placeholder="Room code" class="code-input">
+      <button id="btn-join-code" class="btn btn-primary" data-i18n="join">Join</button>
+    </div>
+  </section>
+</div>
+
+<!-- Create room modal (shared by public/private) -->
+<div id="create-room-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="create-room-title">New Room</h2>
+    <label data-i18n="map">Map</label>
+    <select id="create-map-select"></select>
+
+    <label data-i18n="seekers">Seekers</label>
+    <input id="create-seekers" type="number" min="1" max="5" value="1">
+
+    <label data-i18n="paint_time">Painting Time (sec)</label>
+    <input id="create-paint-duration" type="number" min="10" max="600" value="60">
+
+    <label data-i18n="round_time">Round Time (sec)</label>
+    <input id="create-round-duration" type="number" min="30" max="1800" value="180">
+
+    <label data-i18n="repaint_limit">Repaint Limit</label>
+    <input id="create-repaint-limit" type="number" min="0" max="10" value="2">
+
+    <div class="modal-actions">
+      <button id="btn-create-confirm" class="btn btn-primary btn-big">Create</button>
+      <button id="btn-create-cancel" class="btn btn-ghost">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<!-- Firebase compat SDK via CDN — no build step, works with plain <script> tags -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+
+<script src="assets/js/firebase-config.js"></script>
+<script src="assets/js/firebase-init.js"></script>
+<script src="assets/js/utils.js"></script>
+<script src="assets/js/lang.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/stages.js"></script>
+<script src="assets/js/room.js"></script>
+<script src="assets/js/matchmaking.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>

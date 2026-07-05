@@ -1,0 +1,18 @@
+{
+  "slug": "office",
+  "name": "Office",
+  "width": 960,
+  "height": 540,
+  "backgroundImage": null,
+  "procedural": "office",
+  "bounds": { "x": 30, "y": 260, "w": 900, "h": 250 },
+  "zones": [
+    { "x": 60, "y": 320, "w": 130, "h": 70, "label": "Filing Cabinet" },
+    { "x": 240, "y": 300, "w": 110, "h": 110, "label": "Server Rack" },
+    { "x": 420, "y": 340, "w": 150, "h": 60, "label": "Meeting Table" },
+    { "x": 600, "y": 290, "w": 90, "h": 120, "label": "Potted Plant Wall" },
+    { "x": 760, "y": 310, "w": 120, "h": 90, "label": "Water Cooler Nook" }
+  ],
+  "hiderSpawns": [[90, 470], [270, 470], [450, 470], [630, 470], [810, 470]],
+  "seekerSpawns": [[480, 480]]
+}
