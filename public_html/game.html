@@ -97,6 +97,24 @@
     <!-- Jump (touch only — desktop uses Spacebar). Purely a local visual
          hop, not synced over the network — see game-main.js triggerJump(). -->
     <button id="btn-jump" class="btn btn-secondary jump-btn hidden">⬆</button>
+
+    <!-- Whistle (both roles, seeking phase). Manual tap or an automatic
+         random-interval trigger — see game-main.js bindWhistleControls(). -->
+    <button id="btn-whistle" class="btn btn-secondary whistle-btn hidden">📯</button>
+
+    <!-- Radial pose-selection wheel, opened via #btn-pose-toggle. Six poses
+         placed evenly around the circle with the CSS rotate/translate/
+         counter-rotate trick (see .pose-wheel-btn in style.css) so no JS
+         trig is needed to lay them out. -->
+    <div id="pose-wheel" class="pose-wheel hidden">
+      <button class="pose-wheel-btn" data-pose="stand" style="--i:0" title="Stand">🧍</button>
+      <button class="pose-wheel-btn" data-pose="crouch" style="--i:1" title="Crouch">🧎</button>
+      <button class="pose-wheel-btn" data-pose="lean" style="--i:2" title="Lean">🚶</button>
+      <button class="pose-wheel-btn" data-pose="surrender" style="--i:3" title="Surrender">🙌</button>
+      <button class="pose-wheel-btn" data-pose="prone" style="--i:4" title="Prone">🛌</button>
+      <button class="pose-wheel-btn" data-pose="sit" style="--i:5" title="Sit">🪑</button>
+      <button id="btn-pose-wheel-close" class="pose-wheel-center" title="Close">✕</button>
+    </div>
   </main>
 
   <!-- Painting toolbar: visible to a Hider during 'painting' phase or an active repaint window -->
@@ -109,11 +127,7 @@
       <button id="btn-undo" class="btn btn-ghost tool-btn" title="Undo">↶</button>
       <button id="btn-redo" class="btn btn-ghost tool-btn" title="Redo">↷</button>
       <button id="btn-clear" class="btn btn-ghost tool-btn" title="Clear">✕</button>
-    </div>
-    <div class="pose-buttons">
-      <button class="btn btn-ghost pose-btn active" data-pose="stand">🧍</button>
-      <button class="btn btn-ghost pose-btn" data-pose="crouch">🧎</button>
-      <button class="btn btn-ghost pose-btn" data-pose="lean">🚶</button>
+      <button id="btn-pose-toggle" class="btn btn-ghost tool-btn" title="Pose">🧍</button>
     </div>
     <button id="btn-confirm-paint" class="btn btn-primary btn-big">✓</button>
   </div>

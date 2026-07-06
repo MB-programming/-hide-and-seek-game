@@ -91,6 +91,7 @@
     wirePaintToolbar();
     setupJoystickIfTouch();
     bindJumpControls();
+    bindWhistleControls();
     bindStageClicks();
 
     room.on('meta', onMeta);
@@ -228,6 +229,11 @@
         renderResults(meta, myRole);
         break;
     }
+
+    var showWhistle = !!me && (myRole === 'hider' || myRole === 'seeker') &&
+      me.alive !== false && (meta.phase === 'painting' || meta.phase === 'seeking');
+    $('#btn-whistle').classList.toggle('hidden', !showWhistle);
+    if (showWhistle) scheduleAutoWhistle(); else cancelAutoWhistle();
   }
 
   var roundStartedAt = null;
@@ -358,15 +364,7 @@
       eyedropperArmed = !eyedropperArmed;
       $('#btn-eyedropper').classList.toggle('active', eyedropperArmed);
     });
-    ZizoUtils.qsa('.pose-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var pose = btn.getAttribute('data-pose');
-        localPose = pose;
-        paintEngine.setPose(pose);
-        room.setPose(pose);
-        ZizoUtils.qsa('.pose-btn').forEach(function (b) { b.classList.toggle('active', b === btn); });
-      });
-    });
+    wirePoseWheel();
     $('#btn-confirm-paint').addEventListener('click', function () {
       room.syncPaintCheckpoint(paintEngine.exportCompressed());
       var me = room.players[room.uid];
@@ -379,6 +377,35 @@
 
   function showToolbar(show) {
     $('#paint-toolbar').classList.toggle('hidden', !show);
+    if (!show) $('#pose-wheel').classList.add('hidden');
+  }
+
+  // ---- radial pose wheel -------------------------------------------------
+
+  function wirePoseWheel() {
+    $('#btn-pose-toggle').addEventListener('click', function () {
+      var wheel = $('#pose-wheel');
+      wheel.classList.toggle('hidden');
+      ZizoUtils.qsa('.pose-wheel-btn').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-pose') === localPose);
+      });
+    });
+    $('#btn-pose-wheel-close').addEventListener('click', function () {
+      $('#pose-wheel').classList.add('hidden');
+    });
+    ZizoUtils.qsa('.pose-wheel-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        selectPose(btn.getAttribute('data-pose'));
+        $('#pose-wheel').classList.add('hidden');
+      });
+    });
+  }
+
+  function selectPose(pose) {
+    localPose = pose;
+    paintEngine.setPose(pose);
+    room.setPose(pose);
+    $('#btn-pose-toggle').textContent = { stand: '🧍', crouch: '🧎', lean: '🚶', surrender: '🙌', prone: '🛌', sit: '🪑' }[pose] || '🧍';
   }
 
   // ---- stage clicks: eyedropper sampling + seeker catch attempts --------
@@ -411,7 +438,7 @@
         if (id === room.uid) return;
         var p = playerEntities[id];
         if (p.role !== 'hider' || !p.alive) return;
-        targetMeshes.push(p.bodyMesh, p.headMesh);
+        targetMeshes.push.apply(targetMeshes, p.limbMeshes);
       });
       var hits = raycaster.intersectObjects(targetMeshes);
       var targetId = hits.length ? hits[0].object.userData.playerId : null;
@@ -473,6 +500,50 @@
       return;
     }
     mine.group.position.y = JUMP_HEIGHT * Math.sin(Math.PI * t);
+  }
+
+  // ---- whistle ------------------------------------------------------
+  // A short synthesized "tweet" (see audio.js playWhistle — no sound-file
+  // dependency) the local player can trigger manually, plus an automatic
+  // trigger at a random interval so the character "whistles on its own"
+  // every so often during an active round. Purely local flair (sound +
+  // button flash), same scope as the jump button above — not synced to
+  // other clients.
+
+  var AUTO_WHISTLE_MIN_MS = 18000;
+  var AUTO_WHISTLE_MAX_MS = 40000;
+  var nextAutoWhistleAt = null;
+
+  function bindWhistleControls() {
+    $('#btn-whistle').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      triggerWhistle();
+    });
+  }
+
+  function scheduleAutoWhistle() {
+    if (nextAutoWhistleAt !== null) return;
+    nextAutoWhistleAt = performance.now() + AUTO_WHISTLE_MIN_MS + Math.random() * (AUTO_WHISTLE_MAX_MS - AUTO_WHISTLE_MIN_MS);
+  }
+
+  function cancelAutoWhistle() {
+    nextAutoWhistleAt = null;
+  }
+
+  function triggerWhistle() {
+    ZizoAudio.playWhistle();
+    var btn = $('#btn-whistle');
+    btn.classList.add('blown');
+    clearTimeout(triggerWhistle._t);
+    triggerWhistle._t = setTimeout(function () { btn.classList.remove('blown'); }, 350);
+  }
+
+  function updateAutoWhistle() {
+    if (nextAutoWhistleAt === null) return;
+    if (performance.now() < nextAutoWhistleAt) return;
+    triggerWhistle();
+    nextAutoWhistleAt = null;
+    scheduleAutoWhistle();
   }
 
   // ---- movement + render loop -------------------------------------------
@@ -579,6 +650,7 @@
 
     updateMovement(dt);
     updateJump();
+    updateAutoWhistle();
     checkRepaintWindowExpiry();
     updateTimerHud();
     render();

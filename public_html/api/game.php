@@ -32,6 +32,7 @@ const STARTING_COUNTDOWN_SEC = 3;
 const REPAINT_WINDOW_SEC = 12;
 const STALE_PLAYER_SEC = 20; // no heartbeat for this long = treated as disconnected
 const MAX_PAINT_CHARS = 60000;
+const VALID_POSES = ['stand', 'crouch', 'lean', 'surrender', 'sit', 'prone'];
 
 // ---------------------------------------------------------------------
 // small helpers
@@ -321,7 +322,7 @@ function action_start_round($pdo, $in) {
 
 function action_update_transform($pdo, $in) {
     $p = require_player($pdo, $in['code'], $in['playerId'], $in['token']);
-    $pose = in_array($in['pose'] ?? 'stand', ['stand', 'crouch', 'lean'], true) ? $in['pose'] : 'stand';
+    $pose = in_array($in['pose'] ?? 'stand', VALID_POSES, true) ? $in['pose'] : 'stand';
     $pdo->prepare('UPDATE room_players SET x=?, y=?, pose=? WHERE room_code=? AND player_id=?')
         ->execute([(float) ($in['x'] ?? 0), (float) ($in['y'] ?? 0), $pose, $in['code'], $p['player_id']]);
     json_out(['ok' => true]);
@@ -329,7 +330,7 @@ function action_update_transform($pdo, $in) {
 
 function action_set_pose($pdo, $in) {
     $p = require_player($pdo, $in['code'], $in['playerId'], $in['token']);
-    $pose = in_array($in['pose'] ?? 'stand', ['stand', 'crouch', 'lean'], true) ? $in['pose'] : 'stand';
+    $pose = in_array($in['pose'] ?? 'stand', VALID_POSES, true) ? $in['pose'] : 'stand';
     $pdo->prepare('UPDATE room_players SET pose=? WHERE room_code=? AND player_id=?')->execute([$pose, $in['code'], $p['player_id']]);
     json_out(['ok' => true]);
 }

@@ -55,6 +55,20 @@
       ctx.translate(-w * 0.5, -h * 0.5);
       ctx.arc(w * 0.5, h * 0.18, w * 0.15, 0, Math.PI * 2);
       roundedRectPath(ctx, w * 0.28, h * 0.3, w * 0.44, h * 0.62, w * 0.14);
+    } else if (pose === 'surrender') {
+      // Tall body + two raised-hand bumps at the top corners.
+      ctx.arc(w * 0.5, h * 0.16, w * 0.16, 0, Math.PI * 2);
+      roundedRectPath(ctx, w * 0.24, h * 0.28, w * 0.52, h * 0.68, w * 0.18);
+      ctx.arc(w * 0.14, h * 0.22, w * 0.09, 0, Math.PI * 2);
+      ctx.arc(w * 0.86, h * 0.22, w * 0.09, 0, Math.PI * 2);
+    } else if (pose === 'sit') {
+      // Medium-height body with a wider seated base — between stand and crouch.
+      ctx.arc(w * 0.5, h * 0.3, w * 0.15, 0, Math.PI * 2);
+      roundedRectPath(ctx, w * 0.18, h * 0.42, w * 0.64, h * 0.5, w * 0.18);
+    } else if (pose === 'prone') {
+      // Wide, flat shape near the bottom — lying down.
+      ctx.arc(w * 0.16, h * 0.78, w * 0.15, 0, Math.PI * 2);
+      roundedRectPath(ctx, w * 0.26, h * 0.66, w * 0.66, h * 0.26, w * 0.12);
     } else {
       // 'stand' (default) — tall capsule body + round head.
       ctx.arc(w * 0.5, h * 0.16, w * 0.16, 0, Math.PI * 2);

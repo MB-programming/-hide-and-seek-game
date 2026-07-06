@@ -13,6 +13,7 @@
   var cache = {};       // path -> HTMLAudioElement
   var unlocked = false;
   var ambientEl = null;
+  var audioCtx = null;  // lazily created WebAudio context, used for synthesized SFX (see playWhistle)
 
   function unlockOnFirstGesture() {
     if (unlocked) return;
@@ -22,6 +23,10 @@
     try {
       var a = new Audio();
       a.play().catch(function () {});
+    } catch (e) { /* no-op */ }
+    try {
+      var Ctx = global.AudioContext || global.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
     } catch (e) { /* no-op */ }
   }
   ['pointerdown', 'keydown', 'touchstart'].forEach(function (evt) {
@@ -77,10 +82,34 @@
     }
   }
 
+  // Synthesized "tweet" whistle via WebAudio (a short up-then-down sine
+  // sweep) — deliberately not an admin-uploaded sound file, so the whistle
+  // button/auto-whistle always works even on servers where nobody has
+  // assigned a custom sound to it.
+  function playWhistle() {
+    if (!audioCtx) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(function () {});
+    var now = audioCtx.currentTime;
+    var osc = audioCtx.createOscillator();
+    var gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.linearRampToValueAtTime(1900, now + 0.12);
+    osc.frequency.linearRampToValueAtTime(1500, now + 0.3);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.3, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + 0.34);
+  }
+
   global.ZizoAudio = {
     loadConfig: loadConfig,
     play: play,
     playAmbient: playAmbient,
-    stopAmbient: stopAmbient
+    stopAmbient: stopAmbient,
+    playWhistle: playWhistle
   };
 })(window);
